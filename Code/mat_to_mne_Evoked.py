@@ -66,8 +66,8 @@ results = []
 # Compile list of files to convert, raw data files and output files
 for s_id in [s_id for s_id in list(range(1,25)) if s_id not in [5,8,13,15]]:
     raw_files.append(ROOT_DIR + 'megci_rawdata_mc_ic/megci_s' + str(s_id) +
-                     '_mc/run3_raw_tsss_mc_transOHP_blinkICremoved.fif')
+                     '_mc/run4_raw_tsss_mc_transOHP_blinkICremoved.fif')
     mat_files.append(ROOT_DIR + 'evoked/S' + str(s_id) + '_f.mat')
-    results.append(result_dir + 'S' + str(s_id) + '_f-ave.fif')
+    results.append(result_dir + 'MEGCI_S' + str(s_id) + '_f-ave.fif')
 
 mat_to_mne_Evoked(mat_files, raw_files, results, tmin = -0.05, nave = 1806)
