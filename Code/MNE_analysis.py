@@ -17,10 +17,12 @@ EVOKED_DIR = "/m/nbe/scratch/megci/MFinverse/Evoked_mne/"
 RESULT_DIR = "/m/nbe/scratch/megci/MFinverse/"
 
 mne.set_config("SUBJECTS_DIR", ROOT_DIR + 'FS_Subjects_MEGCI/')
-subject = 'MEGCI_S2'
+subject = 'MEGCI_S11'
 
 raw = ROOT_DIR + 'MEG/megci_rawdata_mc_ic/' + subject.lower() + '_mc/run4_raw_tsss_mc_transOHP_blinkICremoved.fif'
-evoked = mne.read_evokeds(EVOKED_DIR + subject + '_f-ave.fif')
+rest = ROOT_DIR + 'MEG/megci_rawdata_mc_ic/' + subject.lower() + '_mc/rest1_raw_tsss_mc_transOHP_blinkICremoved.fif'
+
+evoked = mne.read_evokeds(EVOKED_DIR + subject + '_f-ave.fif') 
 
 #%% Visualize MRI and MEG alignment
 
@@ -29,8 +31,8 @@ mne.viz.plot_alignment(evoked[0].info, trans, dig=True, meg=["helmet", "sensors"
                        subjects_dir = mne.get_config("SUBJECTS_DIR"), subject = subject)
 
 #%% Compute source space
-
-src = mne.setup_source_space(subject, spacing = 'oct6', add_dist='patch')
+spacing = 'oct6'
+src = mne.setup_source_space(subject, spacing = spacing, add_dist='patch')
 
 fig = mne.viz.plot_alignment(subject=subject, surfaces='white', coord_frame='head', src=src)
 
@@ -42,22 +44,33 @@ bem_path = mne.get_config("SUBJECTS_DIR") + subject + '/bem/' + subject + '-3-sh
 fwd = mne.make_forward_solution(raw, trans = trans, src = src, bem = bem_path,
                                 meg = True, eeg = False, n_jobs = 1, verbose = True)
 
-# Constrain the dipoles to surface normals
-fwd_fixed = mne.convert_forward_solution(fwd, surf_ori = True, force_fixed = True, use_cps = True, copy = True)
-
 # Write the forward solution to disk
-fwd_name = subject + '-fwd.fif'
+fwd_name = subject + '-' + spacing + '-fwd.fif'
 mne.write_forward_solution(RESULT_DIR + 'forward_solutions/' + fwd_name, fwd, overwrite=True)
 
 #%% Load forward solution
 
-fwd_name = subject + '-fwd.fif'
+spacing = 'oct6'
+fwd_name = subject + '-' + spacing + '-fwd.fif'
 fwd = mne.read_forward_solution(RESULT_DIR + 'forward_solutions/' + fwd_name)
+
+# Constrain the dipoles to surface normals
+mne.convert_forward_solution(fwd, surf_ori = True, use_cps = True, copy = False)
 
 #%% Plotting sensitivity maps
 
-grad_map = mne.sensitivity_map(fwd_fixed, ch_type = 'grad', mode = 'fixed')
-mag_map = mne.sensitivity_map(fwd_fixed, ch_type = 'mag', mode = 'fixed')
+grad_map = mne.sensitivity_map(fwd, ch_type = 'grad', mode = 'fixed')
+mag_map = mne.sensitivity_map(fwd, ch_type = 'mag', mode = 'fixed')
 
 brain_sens = grad_map.plot(subjects_dir = mne.get_config("SUBJECTS_DIR"), clim = dict(lims=[0, 50, 100]))
 brain_sens = mag_map.plot(subjects_dir = mne.get_config("SUBJECTS_DIR"), clim = dict(lims=[0, 50, 100]))
+
+#%% Inverse modeling
+
+# Compute covariance matrix for the subject
+noise_cov = mne.compute_raw_covariance(mne.io.Raw(rest))
+
+# Construct the inverse operator
+inv = mne.minimum_norm.make_inverse_operator(evoked[19].info, fwd, noise_cov, loose = 0.2, depth = 0.8)
+
+source_est = mne.minimum_norm.apply_inverse(evoked[19], inv, method = 'eLORETA')
