@@ -4,7 +4,7 @@ import mne
 import numpy as np
 import scipy.io
 
-def mat_to_mne_Evoked(mat_files, raw_files, results, arr_key = 'estimate',
+def mat_to_mne_Evoked(mat_files, raw_files, results, tasks, arr_key = 'estimate',
                       tmin = 0, nave = 1):
     '''
     Converts MATLAB preprocessed .mat files of evoked responses to MNEpython's
@@ -47,7 +47,8 @@ def mat_to_mne_Evoked(mat_files, raw_files, results, arr_key = 'estimate',
         for stim_id, response in enumerate(mat[arr_key]):       
             evoked_array = mne.EvokedArray(np.transpose(response), raw.info,
                                            tmin = tmin, nave = nave,
-                                           comment = 'Sector ' + str(stim_id+1))
+                                           comment = 'Task ' + tasks[i] + ', Sector '
+                                           + str(stim_id+1))
              
             evoked_list.append(evoked_array)
         
@@ -57,11 +58,12 @@ def mat_to_mne_Evoked(mat_files, raw_files, results, arr_key = 'estimate',
 #%% Example function call to transform a folder's worth of matlab-analyzed data
 
 ROOT_DIR = "/m/nbe/scratch/megci/data/MEG/"
-result_dir = "/m/nbe/scratch/megci/MFinverse/Evoked_mne/"
+result_dir = "/m/nbe/scratch/megci/MFinverse/Data/Evoked/"
 
 raw_files = []
 mat_files = []
 results = []
+tasks = []
 
 # Compile list of files to convert, raw data files and output files
 for s_id in [s_id for s_id in list(range(1,25)) if s_id not in [5,8,13,15]]:
@@ -69,5 +71,6 @@ for s_id in [s_id for s_id in list(range(1,25)) if s_id not in [5,8,13,15]]:
                      '_mc/run4_raw_tsss_mc_transOHP_blinkICremoved.fif')
     mat_files.append(ROOT_DIR + 'evoked/S' + str(s_id) + '_f.mat')
     results.append(result_dir + 'MEGCI_S' + str(s_id) + '_f-ave.fif')
+    tasks.append('f')
 
-mat_to_mne_Evoked(mat_files, raw_files, results, tmin = -0.05, nave = 1806)
+mat_to_mne_Evoked(mat_files, raw_files, results, tasks, tmin = -0.05, nave = 1806)

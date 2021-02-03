@@ -13,7 +13,7 @@ Created on Fri Jan 29 14:55:32 2021
 import mne
 
 ROOT_DIR = "/m/nbe/scratch/megci/data/"
-EVOKED_DIR = "/m/nbe/scratch/megci/MFinverse/Evoked_mne/"
+EVOKED_DIR = "/m/nbe/scratch/megci/MFinverse/Data/Evoked/"
 RESULT_DIR = "/m/nbe/scratch/megci/MFinverse/"
 
 mne.set_config("SUBJECTS_DIR", ROOT_DIR + 'FS_Subjects_MEGCI/')
@@ -73,4 +73,4 @@ noise_cov = mne.compute_raw_covariance(mne.io.Raw(rest))
 # Construct the inverse operator
 inv = mne.minimum_norm.make_inverse_operator(evoked[19].info, fwd, noise_cov, loose = 0.2, depth = 0.8)
 
-source_est = mne.minimum_norm.apply_inverse(evoked[19], inv, method = 'eLORETA')
+source_est = mne.minimum_norm.apply_inverse(evoked[19], inv, method = 'MNE')

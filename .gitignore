@@ -1,2 +1,5 @@
 Evoked_mne
 forward_solutions
+*.pyc
+*.pyo
+Data
