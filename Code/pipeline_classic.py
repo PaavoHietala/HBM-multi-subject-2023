@@ -40,7 +40,15 @@ bem_suffix = '-3-shell-bem-sol'
 
 # Which inversion method to use for source activity estimate
 
-stc_method = 'eLORETA'
+stc_method = 'dSPM'
+
+# Which task is currently investigated
+
+task = 'f'
+
+# Which stimuli to analyze
+
+stimuli = ['sector' + str(num) for num in range(1,25)]
 
 # List of raw rest files for covariance matrix and extracting sensor info
 
@@ -69,7 +77,9 @@ steps = {'prepare_directories' :        True,
          'calculate_forward_solution' : True,
          'compute_covariance_matrix' :  True,
          'construct_inverse_operator' : True,
-         'estimate_source_timecourse':  True}
+         'estimate_source_timecourse' : True,
+         'morph_to_fsaverage' :         True,
+         'average_stcs_source_space' :  True}
 
 
 ### Run the pipeline ----------------------------------------------------------
@@ -81,6 +91,8 @@ if steps['prepare_directories']:
                     'Data/src',
                     'Data/inv',
                     'Data/stc',
+                    'Data/stc_m',
+                    'Data/avg',
                     'Data/cov']:
         try:
             os.makedirs(project_dir + dirname)
@@ -89,6 +101,7 @@ if steps['prepare_directories']:
 
 # Following steps are run on per-subject basis
 for idx, subject in enumerate(subjects):
+    print(subject)
     
     # Compute source spaces for subjects and save them in ../Data/src/
     if steps['compute_source_space']:
@@ -118,4 +131,15 @@ for idx, subject in enumerate(subjects):
         raw = rest_raws[idx]
         fname_evokeds = evoked_files[idx]
         mne_op.estimate_source_timecourse(subject, project_dir, raw, src_spacing,
-                                          stc_method, fname_evokeds, overwrite)
+                                          stc_method, fname_evokeds, task, stimuli,
+                                          overwrite)
+    
+    # Morph subject data to fsaverage
+    if steps['morph_to_fsaverage']:
+        mne_op.morph_to_fsaverage(subject, project_dir, src_spacing,
+                                  stc_method, task, stimuli, overwrite)
+
+# Following steps are run on averaged data or produce averaged data
+if steps['average_stcs_source_space']:
+    mne_op.average_stcs_source_space(subjects, project_dir, src_spacing, stc_method,
+                                     task, stimuli, overwrite)

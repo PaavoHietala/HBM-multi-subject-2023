@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
+Data analysis functions used for the 'classic' MNE analysis.
+
 Created on Tue Feb  2 15:31:35 2021
 
 @author: hietalp2
@@ -10,7 +12,7 @@ import mne
 import os
 
 def get_fname(subject, ftype, stc_method = None, src_spacing = None,
-              fname_raw = None, task = None):
+              fname_raw = None, task = None, stim = None):
     '''
     Create a project-standard filename from given parameters.
     
@@ -27,7 +29,9 @@ def get_fname(subject, ftype, stc_method = None, src_spacing = None,
     fname_raw : str, optional
         File name of raw recording from which the info is extracted. The default is None.
     task : str, optional
-        Task in the evoked response, e.g. 'f_sector1'. The default is None.
+        Task in the evoked response, e.g. 'f'. The default is None.
+    stim: str, optional
+        Stimulus name, e.g. 'sector1'. The default is None.
 
     Raises
     ------
@@ -51,7 +55,9 @@ def get_fname(subject, ftype, stc_method = None, src_spacing = None,
         run = os.path.split(fname_raw)[-1].split('_')[0]
         return '-'.join([subject, src_spacing, run, 'inv.fif'])
     elif ftype == 'stc':
-        return '-'.join([subject, src_spacing, stc_method, task])
+        return '-'.join([subject, src_spacing, stc_method, task, stim])
+    elif ftype == 'stc_m':
+        return '-'.join([subject, src_spacing, stc_method, 'fsaverage', task, stim])
     else:
         raise ValueError('Invalid file type ' + ftype)
 
@@ -195,7 +201,7 @@ def construct_inverse_operator(subject, project_dir, raw, src_spacing, overwrite
         mne.minimum_norm.write_inverse_operator(fpath_inv, inv)
     
 def estimate_source_timecourse(subject, project_dir, raw, src_spacing, stc_method,
-                               fname_evokeds, overwrite = False):
+                               fname_evokeds, task, stimuli, overwrite = False):
     '''
     Estimate surface time courses for all evoked responses in the evoked file
     and save them individually in <project_dir>/Data/stc/
@@ -214,6 +220,10 @@ def estimate_source_timecourse(subject, project_dir, raw, src_spacing, stc_metho
         Inversion method used, e.g. 'dSPM'.
     fname_evokeds : str
         Full path to the file containing the evoked responses.
+    task: str
+        Task in the estimated stcs, e.g. 'f'.
+    stimuli: list of str
+        List of stimuli for whcih the stcs are estimated.
     overwrite : bool, optional
         Overwrite existing files switch. The default is False.
 
@@ -229,14 +239,112 @@ def estimate_source_timecourse(subject, project_dir, raw, src_spacing, stc_metho
     evokeds = mne.read_evokeds(fname_evokeds)
     
     # Calculate stc for each evoked response individually
-    for evoked in evokeds:
-        comment = evoked.comment.split(', ')
-        task = comment[0].split(' ')[1] + '_sector' + comment[1].split(' ')[1]
+    for idx, evoked in enumerate(evokeds):
+        stim = stimuli[idx]
 
         fname_stc = get_fname(subject, 'stc', src_spacing = src_spacing,
-                              stc_method = stc_method, task = task)
+                              stc_method = stc_method, task = task, stim=stim)
         fpath_stc = os.path.join(project_dir, 'Data', 'stc', fname_stc)
         
         if overwrite or not os.path.isfile(fpath_stc + '-lh.stc'):
             stc = mne.minimum_norm.apply_inverse(evoked, inv, method = stc_method)    
             stc.save(fpath_stc)
+        
+def morph_to_fsaverage(subject, project_dir, src_spacing, stc_method,
+                       task, stimuli, overwrite):
+    '''
+    Morph source estimates of given subjects to fsaverage mesh and save the
+    morphed stcs in <project_dir>/Data/stc_m/
+
+    Parameters
+    ----------
+    subject : str
+        Subject name/identifier as in filenames.
+    project_dir : str
+        Base directory of the project with Code and Data subfolders.
+    src_spacing : str
+        Source space scheme used in this file, e.g. 'oct6'.
+    stc_method : str
+        Inversion method used, e.g. 'dSPM'.
+    task: str
+        Task in the estimated stcs, e.g. 'f'.
+    stimuli: list of str
+        List of stimuli for whcih the stcs are estimated.
+    overwrite : bool, optional
+        Overwrite existing files switch. The default is False.
+
+    Returns
+    -------
+    None.
+    '''
+    
+    # Load surface time courses
+    stcs = {}
+    for stimulus in stimuli:
+        fname = get_fname(subject, 'stc', stc_method = stc_method, src_spacing=src_spacing,
+                          task = task, stim = stimulus)
+        fpath = os.path.join(project_dir, 'Data', 'stc', fname)
+        stcs[stimulus] = mne.read_source_estimate(fpath)
+    
+    # Morph each stimulus stc to fsaverage and save to disk
+    for stim in stcs:
+        fname_stc_m = get_fname(subject, 'stc_m', stc_method = stc_method,
+                                src_spacing = src_spacing, task = task, stim = stim)
+        fpath_stc_m = os.path.join(project_dir, 'Data', 'stc_m', fname_stc_m)
+        
+        if overwrite or not os.path.isfile(fpath_stc_m + '-lh.stc'):
+            morph = mne.compute_source_morph(stcs[stim], subject_from = subject,
+                                             subject_to = 'fsaverage')
+            stc_m = morph.apply(stcs[stim])
+            stc_m.save(fpath_stc_m)
+
+def average_stcs_source_space(subjects, project_dir, src_spacing, stc_method,
+                              task, stimuli, overwrite):
+    '''
+    Average the source time courses that have been morphed to fsaverage and
+    save them per-stimuli to <project_dir>/Data/avg/
+
+    Parameters
+    ----------
+    subject : str
+        Subject name/identifier as in filenames.
+    project_dir : str
+        Base directory of the project with Code and Data subfolders.
+    src_spacing : str
+        Source space scheme used in this file, e.g. 'oct6'.
+    stc_method : str
+        Inversion method used, e.g. 'dSPM'.
+    task: str
+        Task in the estimated stcs, e.g. 'f'.
+    stimuli: list of str
+        List of stimuli for whcih the stcs are estimated.
+    overwrite : bool, optional
+        Overwrite existing files switch. The default is False.
+
+    Returns
+    -------
+    None.
+    '''
+    
+    # Average each stimulus and save the avg stc to disk
+    for stim in stimuli:
+        
+        # Load stcs for all subjects with this stimulus
+        stcs = []
+        for subject in subjects:
+            fname = get_fname(subject, 'stc_m', stc_method = stc_method,
+                              src_spacing = src_spacing, task = task, stim = stim)
+            fpath = os.path.join(project_dir, 'Data', 'stc_m', fname)
+            stcs.append(mne.read_source_estimate(fpath))
+        
+        # Set the first stc as base and add all others to it, divide by n
+        avg = stcs[0].copy()
+        for i in range(1, len(subjects)):
+            avg.data += stcs[i].data
+        avg.data = avg.data / len(subjects)
+        
+        # Save to disk
+        fname = get_fname('fsaverage', 'stc', stc_method = stc_method, 
+                          src_spacing = src_spacing, task = task, stim = stim)
+        fpath = os.path.join(project_dir, 'Data', 'avg', fname)
+        avg.save(fpath)
