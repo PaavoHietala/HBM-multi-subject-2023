@@ -27,8 +27,8 @@ mne.set_config('SUBJECTS_DIR', subjects_dir)
 
 # List of subject names
 
-exclude = [5, 8, 13, 15, 17, 18, 19, 20, 21, 22, 23, 24]
-subjects = ['MEGCI_S' + str(idx) for idx in list(range(1,25)) if idx not in exclude]
+exclude = [5, 8, 13, 15]
+subjects = ['MEGCI_S' + str(idx) for idx in list(range(17,25)) if idx not in exclude]
 
 # Source point spacing for source space calculation
 
@@ -67,13 +67,14 @@ evoked_files = [project_dir + 'Data/Evoked/' + subject + '_f-ave.fif' for
 
 # Overwrite existing files
 
-overwrite = False
+overwrite = True
 
 ### Pipeline steps to run -----------------------------------------------------
 
 
 steps = {'prepare_directories' :        True,
          'compute_source_space' :       True,
+         'calculate_bem_solution' :     True,
          'calculate_forward_solution' : True,
          'compute_covariance_matrix' :  True,
          'construct_inverse_operator' : True,
@@ -106,7 +107,11 @@ for idx, subject in enumerate(subjects):
     # Compute source spaces for subjects and save them in ../Data/src/
     if steps['compute_source_space']:
         mne_op.compute_source_space(subject, project_dir, src_spacing, overwrite)
-        
+    
+    # Setup forward model based on FreeSurfer BEM surfaces
+    if steps['calculate_bem_solution']:
+        mne_op.calculate_bem_solution(subject, project_dir, overwrite)
+    
     # Calculate forward solutions for the subjects and save them in ../Data/fwd/
     if steps['calculate_forward_solution']:
         bem = os.path.join(subjects_dir, subject, 'bem', subject + bem_suffix + '.fif')

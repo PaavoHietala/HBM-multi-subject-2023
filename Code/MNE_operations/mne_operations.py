@@ -12,7 +12,7 @@ import mne
 import os
 
 def get_fname(subject, ftype, stc_method = None, src_spacing = None,
-              fname_raw = None, task = None, stim = None):
+              fname_raw = None, task = None, stim = None, layers = None):
     '''
     Create a project-standard filename from given parameters.
     
@@ -32,6 +32,8 @@ def get_fname(subject, ftype, stc_method = None, src_spacing = None,
         Task in the evoked response, e.g. 'f'. The default is None.
     stim: str, optional
         Stimulus name, e.g. 'sector1'. The default is None.
+    layers: str, optional
+        How many layers the BEM model has. The default is None.
 
     Raises
     ------
@@ -58,6 +60,8 @@ def get_fname(subject, ftype, stc_method = None, src_spacing = None,
         return '-'.join([subject, src_spacing, stc_method, task, stim])
     elif ftype == 'stc_m':
         return '-'.join([subject, src_spacing, stc_method, 'fsaverage', task, stim])
+    elif ftype == 'bem':
+        return '-'.join([subject, layers, 'shell-bem-sol.fif'])
     else:
         raise ValueError('Invalid file type ' + ftype)
 
@@ -88,6 +92,36 @@ def compute_source_space(subject, project_dir, src_spacing, overwrite = False):
     if overwrite or not os.path.isfile(fpath):
         src = mne.setup_source_space(subject, spacing = src_spacing, add_dist='patch')
         src.save(fpath, overwrite = True)
+   
+def calculate_bem_solution(subject, project_dir, overwrite):
+    '''
+    Calculate bem solutions from FreeSurfer surfaces.
+
+    Parameters
+    ----------
+    subject : str
+        Subject name/identifier as in filenames.
+    project_dir : str
+        Base directory of the project with Code and Data subfolders.
+    overwrite : bool, optional
+        Overwrite existing files switch. The default is False.
+
+    Returns
+    -------
+    None.
+
+    '''
+    
+    cond = {1 : [0.3], 3 : [0.3, 0.006, 0.3]}
+    for layers in cond:
+        fname = get_fname(subject, 'bem', layers = str(layers))
+        fpath = os.path.join(mne.get_config('SUBJECTS_DIR'), subject, 'bem', fname)
+        
+        if overwrite or not os.path.isfile(fpath):
+            # Calculate and save the BEM solution
+            bem = mne.make_bem_model(subject, ico = None, conductivity = cond[layers])
+            bem = mne.make_bem_solution(bem)
+            mne.write_bem_solution(fpath, bem, overwrite = True)
     
 def calculate_forward_solution(subject, project_dir, src_spacing, bem, raw, coreg,
                                overwrite = False):
