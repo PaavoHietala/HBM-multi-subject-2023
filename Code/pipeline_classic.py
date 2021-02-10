@@ -65,22 +65,30 @@ coreg_files = ['/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/' + subject +
 evoked_files = [project_dir + 'Data/Evoked/' + subject + '_f-ave.fif' for
                 subject in subjects]
 
+# List of colors for each stimulus label
+
+colors = ['mistyrose', 'plum', 'thistle', 'lightsteelblue', 'lightcyan', 'lightgreen', 'lightyellow', 'papayawhip',
+          'lightcoral', 'violet', 'mediumorchid', 'royalblue', 'aqua', 'mediumspringgreen', 'khaki', 'navajowhite',
+          'red', 'purple', 'blueviolet', 'blue', 'turquoise', 'lime', 'yellow', 'orange']
+
 # Overwrite existing files
 
-overwrite = True
+overwrite = False
 
 ### Pipeline steps to run -----------------------------------------------------
 
 
-steps = {'prepare_directories' :        True,
-         'compute_source_space' :       True,
-         'calculate_bem_solution' :     True,
-         'calculate_forward_solution' : True,
-         'compute_covariance_matrix' :  True,
-         'construct_inverse_operator' : True,
-         'estimate_source_timecourse' : True,
-         'morph_to_fsaverage' :         True,
-         'average_stcs_source_space' :  True}
+steps = {'prepare_directories' :        False,
+         'compute_source_space' :       False,
+         'calculate_bem_solution' :     False,
+         'calculate_forward_solution' : False,
+         'compute_covariance_matrix' :  False,
+         'construct_inverse_operator' : False,
+         'estimate_source_timecourse' : False,
+         'morph_to_fsaverage' :         False,
+         'average_stcs_source_space' :  False,
+         'label_peaks' :                False,
+         'expand_peak_labels' :         True}
 
 
 ### Run the pipeline ----------------------------------------------------------
@@ -94,6 +102,7 @@ if steps['prepare_directories']:
                     'Data/stc',
                     'Data/stc_m',
                     'Data/avg',
+                    'Data/labels',
                     'Data/cov']:
         try:
             os.makedirs(project_dir + dirname)
@@ -145,6 +154,17 @@ for idx, subject in enumerate(subjects):
                                   stc_method, task, stimuli, overwrite)
 
 # Following steps are run on averaged data or produce averaged data
+
+# Average data from all subjects for selected task and stimuli
 if steps['average_stcs_source_space']:
     mne_op.average_stcs_source_space(subjects, project_dir, src_spacing, stc_method,
                                      task, stimuli, overwrite)
+    
+# Select peaks from all averaged stimuli and plot on fsaverage
+if steps['label_peaks']:
+    mne_op.label_peaks(subjects, project_dir, src_spacing, stc_method, task,
+                       stimuli, colors, overwrite)
+
+if steps['expand_peak_labels']:
+    mne_op.expand_peak_labels(subjects, project_dir, src_spacing, stc_method,
+                              task, stimuli, colors, overwrite)

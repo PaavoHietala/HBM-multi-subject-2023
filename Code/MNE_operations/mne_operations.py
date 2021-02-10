@@ -10,9 +10,12 @@ Created on Tue Feb  2 15:31:35 2021
 
 import mne
 import os
+from surfer import utils
+import matplotlib
+import numpy as np
 
 def get_fname(subject, ftype, stc_method = None, src_spacing = None,
-              fname_raw = None, task = None, stim = None, layers = None):
+              fname_raw = None, task = None, stim = None, layers = None, hemi = None):
     '''
     Create a project-standard filename from given parameters.
     
@@ -34,6 +37,8 @@ def get_fname(subject, ftype, stc_method = None, src_spacing = None,
         Stimulus name, e.g. 'sector1'. The default is None.
     layers: str, optional
         How many layers the BEM model has. The default is None.
+    hemi: str, optional
+        Which hemisphere the name is for, e.g. 'lh'. THe default is None.
 
     Raises
     ------
@@ -62,6 +67,8 @@ def get_fname(subject, ftype, stc_method = None, src_spacing = None,
         return '-'.join([subject, src_spacing, stc_method, 'fsaverage', task, stim])
     elif ftype == 'bem':
         return '-'.join([subject, layers, 'shell-bem-sol.fif'])
+    elif ftype == 'label':
+        return '-'.join([subject, src_spacing, stc_method, task, stim])
     else:
         raise ValueError('Invalid file type ' + ftype)
 
@@ -359,26 +366,183 @@ def average_stcs_source_space(subjects, project_dir, src_spacing, stc_method,
     -------
     None.
     '''
-    
+        
     # Average each stimulus and save the avg stc to disk
     for stim in stimuli:
-        
-        # Load stcs for all subjects with this stimulus
-        stcs = []
-        for subject in subjects:
-            fname = get_fname(subject, 'stc_m', stc_method = stc_method,
-                              src_spacing = src_spacing, task = task, stim = stim)
-            fpath = os.path.join(project_dir, 'Data', 'stc_m', fname)
-            stcs.append(mne.read_source_estimate(fpath))
-        
-        # Set the first stc as base and add all others to it, divide by n
-        avg = stcs[0].copy()
-        for i in range(1, len(subjects)):
-            avg.data += stcs[i].data
-        avg.data = avg.data / len(subjects)
-        
-        # Save to disk
         fname = get_fname('fsaverage', 'stc', stc_method = stc_method, 
                           src_spacing = src_spacing, task = task, stim = stim)
         fpath = os.path.join(project_dir, 'Data', 'avg', fname)
-        avg.save(fpath)
+        
+        if overwrite or not os.path.isfile(fpath):
+            # Load stcs for all subjects with this stimulus
+            stcs = []
+            for subject in subjects:
+                fname = get_fname(subject, 'stc_m', stc_method = stc_method,
+                                  src_spacing = src_spacing, task = task, stim = stim)
+                fpath = os.path.join(project_dir, 'Data', 'stc_m', fname)
+                stcs.append(mne.read_source_estimate(fpath))
+            
+            # Set the first stc as base and add all others to it, divide by n
+            avg = stcs[0].copy()
+            for i in range(1, len(subjects)):
+                avg.data += stcs[i].data
+            avg.data = avg.data / len(subjects)
+            
+            # Save to disk
+            avg.save(fpath)
+
+def label_peaks(subjects, project_dir, src_spacing, stc_method, task, stimuli,
+                colors, overwrite):
+    '''
+    Get lh stc peaks and create labels from them and save the label to
+    <project_dir>/Data/labels. Use expand_peak_labels instead.
+
+    Parameters
+    ----------
+    subject : str
+        Subject name/identifier as in filenames.
+    project_dir : str
+        Base directory of the project with Code and Data subfolders.
+    src_spacing : str
+        Source space scheme used in this file, e.g. 'oct6'.
+    stc_method : str
+        Inversion method used, e.g. 'dSPM'.
+    task: str
+        Task in the estimated stcs, e.g. 'f'.
+    stimuli: list of str
+        List of stimuli for whcih the stcs are estimated.
+    colors: list of str
+        List of matplotlib colors for stimuli in the same order as stimuli.
+    overwrite : bool, optional
+        Overwrite existing files switch. The default is False.
+
+    Returns
+    -------
+    None.
+    '''
+    
+    brain = mne.viz.Brain('fsaverage', 'lh', 'white')
+    
+    for c_idx, stim in enumerate(stimuli):
+        lname = get_fname('fsaverage', 'label', src_spacing = src_spacing,
+                          stc_method = stc_method, task = task, stim = stim)
+        lpath = os.path.join(project_dir, 'Data', 'labels', lname)
+        
+        if overwrite or not os.path.isfile(lpath + '-lh.label'):
+            fname = get_fname('fsaverage', 'stc', stc_method = stc_method, 
+                              src_spacing = src_spacing, task = task, stim = stim)
+            fpath = os.path.join(project_dir, 'Data', 'avg', fname)
+            stc = mne.read_source_estimate(fpath)
+            
+            peak = stc.get_peak(hemi = 'lh')[0]
+            
+            print('Writing label', lpath)
+            
+            utils.coord_to_label('fsaverage', peak, label = lpath,
+                                 hemi = 'lh', n_steps = 5, coord_as_vert = True)
+        print('Loading label', lpath)
+        brain.add_label(lpath + '-lh.label', color = colors[c_idx], reset_camera = False)
+    
+def expand_peak_labels(subjects, project_dir, src_spacing, stc_method, task,
+                       stimuli, colors, overwrite):
+    '''
+    Create labels for peaks activation locations for each hemisphere and
+    visualize the results.
+
+    Parameters
+    ----------
+    subject : str
+        Subject name/identifier as in filenames.
+    project_dir : str
+        Base directory of the project with Code and Data subfolders.
+    src_spacing : str
+        Source space scheme used in this file, e.g. 'oct6'.
+    stc_method : str
+        Inversion method used, e.g. 'dSPM'.
+    task: str
+        Task in the estimated stcs, e.g. 'f'.
+    stimuli: list of str
+        List of stimuli for whcih the stcs are estimated.
+    colors: list of str
+        List of matplotlib colors for stimuli in the same order as stimuli.
+    overwrite : bool, optional
+        Overwrite existing files switch. The default is False.
+
+    Returns
+    -------
+    None.
+    '''
+    
+    brain_lh = mne.viz.Brain('fsaverage', 'lh', 'inflated', title = 'fsaverage lh',
+                             show = False)
+    brain_rh = mne.viz.Brain('fsaverage', 'rh', 'inflated', title = 'fsaverage rh',
+                             show = False)
+    
+    peaks = []
+    peak_hemis = []
+    colors_rgb = np.array([matplotlib.colors.to_rgba(c) for c in colors])
+    
+    
+    # Find peaks for each averaged stimulus stc
+    for c_idx, stim in enumerate(stimuli):
+        fname = get_fname('fsaverage', 'stc', stc_method = stc_method, 
+                          src_spacing = src_spacing, task = task, stim = stim)
+        fpath = os.path.join(project_dir, 'Data', 'avg', fname)
+        stc = mne.read_source_estimate(fpath)
+        
+        if np.max(stc.lh_data) > np.max(stc.rh_data):
+            hemi = 'lh'
+        else:
+            hemi = 'rh'
+        
+        peaks.append(stc.get_peak(hemi = hemi)[0])
+        peak_hemis.append(hemi)
+    
+    # Remove duplicate peaks, because they are indistinguishable
+    for hemi in ['lh', 'rh']:
+        i = 0
+        while True:
+            if i == len(peaks) - 1:
+                break
+            elif peak_hemis[i] != hemi:
+                i += 1
+                continue
+            elif peaks.count(peaks[i]) == 1:
+                i += 1
+                continue
+            
+            # Iterate over indices of duplicate values backwards, skip first occurance
+            for dup_idx in [j for j, peak in enumerate(peaks) if peak == peaks[i]][:0:-1]:
+                print(stimuli[i] + ' and ' + stimuli[dup_idx] + ' have the same seed on hemi ' + peak_hemis[dup_idx])
+                peaks.pop(dup_idx)
+                peak_hemis.pop(dup_idx)
+                colors_rgb = np.delete(colors_rgb, dup_idx, 0)
+                stimuli.pop(dup_idx)
+            i += 1
+    
+    # Grow labels and visualize them on the brain
+    for hemi_id, hemi in enumerate(['lh', 'rh']):
+        colors_ = np.zeros((peak_hemis.count(hemi), 4))
+        peaks_ = []
+        stimuli_ = []
+        for idx, hemi_idx in enumerate([j for j, ph in enumerate(peak_hemis) if ph == hemi]):
+            colors_[idx] = colors_rgb[hemi_idx]
+            peaks_.append(peaks[hemi_idx])
+            stimuli_.append(stimuli[hemi_idx])
+        
+        print('Growing ' + hemi + ' labels...')
+        labels_ =  mne.grow_labels('fsaverage', peaks_, [7] * len(peaks_), [hemi_id] * len(peaks_),
+                                   overlap = False, names = stimuli_, colors = colors_)
+
+        print('Adding labels to ' + hemi + ' brain...')
+        for label in labels_:
+            if hemi == 'lh':
+                brain_lh.add_label(label, alpha = 1, reset_camera = False)
+            else:
+                brain_rh.add_label(label, alpha = 1, reset_camera = False)
+
+    print('Done')
+    brain_lh.show()
+    brain_lh.show_view({'elevation' : 100, 'azimuth' : -55}, distance = 350)
+    brain_rh.show()
+    brain_rh.show_view({'elevation' : 100, 'azimuth' : -125}, distance = 350)
