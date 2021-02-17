@@ -13,6 +13,7 @@ import os
 from surfer import utils
 import matplotlib
 import numpy as np
+from sklearn.preprocessing import normalize
 
 def get_fname(subject, ftype, stc_method = None, src_spacing = None,
               fname_raw = None, task = None, stim = None, layers = None, hemi = None):
@@ -72,7 +73,8 @@ def get_fname(subject, ftype, stc_method = None, src_spacing = None,
     else:
         raise ValueError('Invalid file type ' + ftype)
 
-def compute_source_space(subject, project_dir, src_spacing, overwrite = False):
+def compute_source_space(subject, project_dir, src_spacing, overwrite = False,
+                         add_dist = False, morph = False):
     '''
     Compute source space vertices from freesurfer data and save it in
     <project_dir>/Data/src/
@@ -87,6 +89,10 @@ def compute_source_space(subject, project_dir, src_spacing, overwrite = False):
         Source space scheme used in this file, e.g. 'oct6'.
     overwrite : bool, optional
         Overwrite existing files switch. The default is False.
+    add_dist: bool | str, optional
+        Add distance information to the source space. The default is False.
+    morph: bool, optional
+        Create the source space by warping from fsaverage. The default is False.
 
     Returns
     -------
@@ -97,7 +103,16 @@ def compute_source_space(subject, project_dir, src_spacing, overwrite = False):
     fpath = os.path.join(project_dir, 'Data', 'src', fname)
     
     if overwrite or not os.path.isfile(fpath):
-        src = mne.setup_source_space(subject, spacing = src_spacing, add_dist='patch')
+        if not morph:
+            src = mne.setup_source_space(subject, spacing = src_spacing,
+                                         add_dist=add_dist)
+        else:
+            # Load fsaverage source space and morph it to subject
+            fname_ref = get_fname('fsaverage', 'src', src_spacing = src_spacing)
+            fpath_ref = os.path.join(project_dir, 'Data', 'src', fname_ref)
+            
+            src_ref = mne.read_source_spaces(fpath_ref)
+            src = mne.morph_source_spaces(src_ref, subject_to=subject)
         src.save(fpath, overwrite = True)
    
 def calculate_bem_solution(subject, project_dir, overwrite):
@@ -168,6 +183,8 @@ def calculate_forward_solution(subject, project_dir, src_spacing, bem, raw, core
         fwd = mne.make_forward_solution(raw, trans = coreg, src = src, bem = bem,
                                         meg = True, eeg = False)
         mne.write_forward_solution(fpath_fwd, fwd, overwrite=True)
+        print(fwd)
+        print(type(fwd))
 
 def compute_covariance_matrix(subject, project_dir, raw, overwrite = False):
     '''
@@ -273,6 +290,9 @@ def estimate_source_timecourse(subject, project_dir, raw, src_spacing, stc_metho
     None.
     '''
     
+    SNR = 2
+    lambda2 = 1.0 / SNR ** 2
+    
     # Load the inverse operator and evoked responses
     fname_inv = get_fname(subject, 'inv', src_spacing = src_spacing, fname_raw = raw)
     inv = mne.minimum_norm.read_inverse_operator(os.path.join(project_dir, 'Data', 'inv', fname_inv))
@@ -288,7 +308,7 @@ def estimate_source_timecourse(subject, project_dir, raw, src_spacing, stc_metho
         fpath_stc = os.path.join(project_dir, 'Data', 'stc', fname_stc)
         
         if overwrite or not os.path.isfile(fpath_stc + '-lh.stc'):
-            stc = mne.minimum_norm.apply_inverse(evoked, inv, method = stc_method)    
+            stc = mne.minimum_norm.apply_inverse(evoked, inv, lambda2, method = stc_method)    
             stc.save(fpath_stc)
         
 def morph_to_fsaverage(subject, project_dir, src_spacing, stc_method,
@@ -377,10 +397,10 @@ def average_stcs_source_space(subjects, project_dir, src_spacing, stc_method,
             # Load stcs for all subjects with this stimulus
             stcs = []
             for subject in subjects:
-                fname = get_fname(subject, 'stc_m', stc_method = stc_method,
-                                  src_spacing = src_spacing, task = task, stim = stim)
-                fpath = os.path.join(project_dir, 'Data', 'stc_m', fname)
-                stcs.append(mne.read_source_estimate(fpath))
+                fname_m = get_fname(subject, 'stc_m', stc_method = stc_method,
+                                    src_spacing = src_spacing, task = task, stim = stim)
+                fpath_m = os.path.join(project_dir, 'Data', 'stc_m', fname_m)
+                stcs.append(mne.read_source_estimate(fpath_m))
             
             # Set the first stc as base and add all others to it, divide by n
             avg = stcs[0].copy()
@@ -389,6 +409,7 @@ def average_stcs_source_space(subjects, project_dir, src_spacing, stc_method,
             avg.data = avg.data / len(subjects)
             
             # Save to disk
+            print(fpath)
             avg.save(fpath)
 
 def label_peaks(subjects, project_dir, src_spacing, stc_method, task, stimuli,
@@ -546,3 +567,111 @@ def expand_peak_labels(subjects, project_dir, src_spacing, stc_method, task,
     brain_lh.show_view({'elevation' : 100, 'azimuth' : -55}, distance = 350)
     brain_rh.show()
     brain_rh.show_view({'elevation' : 100, 'azimuth' : -125}, distance = 350)
+
+def label_all_vertices(subjects, project_dir, src_spacing, stc_method, task,
+                       stimuli, colors, overwrite):
+    '''
+    Create labels for every point based on which normalized response is the 
+    most prominant
+
+    Parameters
+    ----------
+    subject : str
+        Subject name/identifier as in filenames.
+    project_dir : str
+        Base directory of the project with Code and Data subfolders.
+    src_spacing : str
+        Source space scheme used in this file, e.g. 'oct6'.
+    stc_method : str
+        Inversion method used, e.g. 'dSPM'.
+    task: str
+        Task in the estimated stcs, e.g. 'f'.
+    stimuli: list of str
+        List of stimuli for whcih the stcs are estimated.
+    colors: list of str
+        List of matplotlib colors for stimuli in the same order as stimuli.
+    overwrite : bool, optional
+        Overwrite existing files switch. The default is False.
+
+    Returns
+    -------
+    None.
+    '''
+    
+    brain_lh = mne.viz.Brain('fsaverage', 'lh', 'inflated', title = 'fsaverage lh',
+                             show = False)
+    brain_rh = mne.viz.Brain('fsaverage', 'rh', 'inflated', title = 'fsaverage rh',
+                             show = False)
+    
+    data = [[], []]
+    colors_rgb = np.array([matplotlib.colors.to_rgba(c) for c in colors])
+    
+    
+    # Load all stcs, limit to occipital cortex and normalize their values to 0..1
+    occipital_idx_lh = []
+    annotation_lh = mne.read_labels_from_annot('fsaverage', hemi = 'lh')
+    for label in [l for l in annotation_lh if l.name in ['lingual-lh', 'lateraloccipital-lh', 'cuneus-lh', 'pericalcarine-lh']]:
+        occipital_idx_lh += label.get_vertices_used().tolist()
+    
+    occipital_idx_rh = []
+    annotation_rh = mne.read_labels_from_annot('fsaverage', hemi = 'rh')
+    for label in [l for l in annotation_rh if l.name in ['lingual-rh', 'lateraloccipital-rh', 'cuneus-rh', 'pericalcarine-rh']]:
+        occipital_idx_rh += label.get_vertices_used().tolist()
+        
+        
+        
+    print('Loading stcs')
+    for c_idx, stim in enumerate(stimuli):
+        fname = get_fname('fsaverage', 'stc', stc_method = stc_method, 
+                          src_spacing = src_spacing, task = task, stim = stim)
+        fpath = os.path.join(project_dir, 'Data', 'avg', fname)
+        stc = mne.read_source_estimate(fpath)
+        
+        data_lh = stc.lh_data.copy()
+        #for col_idx in range(stc.lh_data.shape[0]):
+        #    if col_idx in occipital_idx_lh:
+        #        continue
+        #    else:
+        #        data_lh[col_idx, :] = 0
+        
+        data_rh = stc.rh_data.copy()
+        #for col_idx in range(stc.rh_data.shape[0]):
+        #    if col_idx in occipital_idx_rh:
+        #        continue
+        #    else:
+        #        data_rh[col_idx, :] = 0
+        
+        data[0].append(data_lh / data_lh.sum())
+        data[1].append(data_rh / data_rh.sum())
+    
+    # Iterate over all vertices and label them
+    print('Solving labels for vertices')
+    vertex_labels = [[], []]
+    for hemi_id in [0, 1]:
+        for vertex in range(len(data[hemi_id][0])):
+            stcs = [max(stc[vertex]) for stc in data[hemi_id]]
+            label = stcs.index(max(stcs))
+            vertex_labels[hemi_id].append(label)
+    
+    # Create labels from vertex indices
+    print('Creating labels')
+    for hemi_id, hemi in enumerate(['lh', 'rh']):
+        labels = []
+        
+        for label_id in range(len(stimuli)):
+            verts = [i for i, x in enumerate(vertex_labels[hemi_id]) if x == label_id]
+            labels.append(mne.Label(verts, hemi = hemi, color = colors_rgb[label_id]))
+
+        print('Adding labels to ' + hemi + ' brain...')
+        for label in labels:
+            if hemi == 'lh':
+                brain_lh.add_label(label.smooth(subject = 'fsaverage', smooth = 2), alpha = 1, reset_camera = False)
+            else:
+                brain_rh.add_label(label.smooth(subject = 'fsaverage', smooth = 2), alpha = 1, reset_camera = False)
+
+    print('Done')
+    brain_lh.show()
+    brain_lh.show_view({'elevation' : 100, 'azimuth' : -55}, distance = 350)
+    brain_rh.show()
+    brain_rh.show_view({'elevation' : 100, 'azimuth' : -125}, distance = 350)
+    

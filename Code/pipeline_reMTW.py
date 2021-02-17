@@ -9,16 +9,20 @@ Created on Tue Feb  2 15:31:30 2021
 import mne
 import os
 import sys
+import numpy as np
 
 # Dirty hack to get the relative import from same dir to work
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 from MNE_operations import mne_operations as mne_op
 
+from groupmne import compute_group_inverse, prepare_fwds, compute_fwd
+from mutar.utils import  groundmetric
+
 ### Parameters ----------------------------------------------------------------
 
 
 # Root data directory of the project
-project_dir = '/m/nbe/scratch/megci/MFinverse/Classic/'
+project_dir = '/m/nbe/scratch/megci/MFinverse/reMTW/'
 
 # Subjects' MRI location
 
@@ -28,19 +32,19 @@ mne.set_config('SUBJECTS_DIR', subjects_dir)
 # List of subject names
 
 exclude = [5, 8, 13, 15]
-subjects = ['MEGCI_S' + str(idx) for idx in list(range(17,25)) if idx not in exclude]
+subjects = ['MEGCI_S' + str(idx) for idx in list(range(1,25)) if idx not in exclude]
 
 # Source point spacing for source space calculation
 
-src_spacing = 'oct6'
+src_spacing = 'oct5'
 
 # Which BEM model to use for forward solution, <subject name> + <bem_suffix>.fif
 
-bem_suffix = '-3-shell-bem-sol'
+bem_suffix = '-1-shell-bem-sol'
 
 # Which inversion method to use for source activity estimate
 
-stc_method = 'dSPM'
+stc_method = 'remtw'
 
 # Which task is currently investigated
 
@@ -78,18 +82,17 @@ overwrite = False
 ### Pipeline steps to run -----------------------------------------------------
 
 
-steps = {'prepare_directories' :        False,
-         'compute_source_space' :       False,
-         'calculate_bem_solution' :     False,
-         'calculate_forward_solution' : False,
-         'compute_covariance_matrix' :  False,
-         'construct_inverse_operator' : False,
-         'estimate_source_timecourse' : False,
-         'morph_to_fsaverage' :         False,
-         'average_stcs_source_space' :  False,
+steps = {'prepare_directories' :        True,
+         'compute_source_space' :       True,
+         'calculate_bem_solution' :     True,
+         'calculate_forward_solution' : True,
+         'compute_covariance_matrix' :  True,
+         'estimate_source_timecourse' : True,
+         'morph_to_fsaverage' :         True,
+         'average_stcs_source_space' :  True,
          'label_peaks' :                False,
          'expand_peak_labels' :         False,
-         'label_all_vertices' :         True}
+         'label_all_vertices' :         False}
 
 
 ### Run the pipeline ----------------------------------------------------------
@@ -110,13 +113,19 @@ if steps['prepare_directories']:
         except FileExistsError:
             pass
 
+# Compute source space for fsaverage before subjects
+if steps['compute_source_space']:
+    mne_op.compute_source_space('fsaverage', project_dir, src_spacing, overwrite,
+                                add_dist = False)
+
 # Following steps are run on per-subject basis
 for idx, subject in enumerate(subjects):
     print(subject)
     
     # Compute source spaces for subjects and save them in ../Data/src/
     if steps['compute_source_space']:
-        mne_op.compute_source_space(subject, project_dir, src_spacing, overwrite)
+        mne_op.compute_source_space(subject, project_dir, src_spacing, overwrite,
+                                    morph = True)
     
     # Setup forward model based on FreeSurfer BEM surfaces
     if steps['calculate_bem_solution']:
@@ -134,30 +143,68 @@ for idx, subject in enumerate(subjects):
     if steps['compute_covariance_matrix']:
         raw = rest_raws[idx]
         mne_op.compute_covariance_matrix(subject, project_dir, raw, overwrite)
+
+# Following steps are run on simulaneously for all subjects
+
+# Estimate source timecourses
+if steps['estimate_source_timecourse']:
+    # Prepare list of evoked responses
+    evokeds = []
+    for fpath in evoked_files:
+        evokeds.append(mne.read_evokeds(fpath))
     
-    # Construct inverse operator
-    if steps['construct_inverse_operator']:
-        raw = rest_raws[idx]
-        mne_op.construct_inverse_operator(subject, project_dir, raw, src_spacing,
-                                          overwrite)
+    # Rearrange to stimulus-based listing instead of subject-based
+    evokeds = [[evokeds_subj[i] for evokeds_subj in evokeds] for i in range(len(evokeds[0]))]
     
-    # Estimate source timecourses
-    if steps['estimate_source_timecourse']:
-        raw = rest_raws[idx]
-        fname_evokeds = evoked_files[idx]
-        mne_op.estimate_source_timecourse(subject, project_dir, raw, src_spacing,
-                                          stc_method, fname_evokeds, task, stimuli,
-                                          overwrite)
+    # Load forward operators and noise covs
+    fwds_ = []
+    noise_covs = []
+    for idx, subject in enumerate(subjects):
+        fname_fwd = mne_op.get_fname(subject, 'fwd', src_spacing = src_spacing)
+        fpath_fwd = os.path.join(project_dir, 'Data', 'fwd', fname_fwd)
+        fwds_.append(mne.read_forward_solution(fpath_fwd))
+        
+        fname_cov = mne_op.get_fname(subject, 'cov', fname_raw = rest_raws[idx])
+        noise_cov = mne.read_cov(os.path.join(project_dir, 'Data', 'cov', fname_cov))
+        noise_covs.append(noise_cov)
+    print('Defining base M')
+    base_M = groundmetric(fwds_[0]['nsource'], p=2, normed = True)
+
+    # Load fsaverage source space for reference
+    fname_ref = mne_op.get_fname('fsaverage', 'src', src_spacing = src_spacing)
+    fpath_ref = os.path.join(project_dir, 'Data', 'src', fname_ref)
     
-    # Morph subject data to fsaverage
-    if steps['morph_to_fsaverage']:
+    src_ref = mne.read_source_spaces(fpath_ref)
+        
+    # Prepare forward operators for the inversion
+    print(fwds_)
+    print(src_ref)
+    fwds = prepare_fwds(fwds_, src_ref, copy = False)
+        
+    # Solve the inverse problem for each stimulus with reMTW
+    for i, stim in enumerate(stimuli):
+        evokeds_stimx = [ev.crop(0.07, 0.09) for ev in evokeds[i]]
+        stcs_remtw = compute_group_inverse(fwds, evokeds_stimx, noise_covs, M=np.copy(base_M),
+                                           method = 'remtw', alpha = 1, beta = 0.3,
+                                           n_jobs = 32, gpu = True, ot_threshold = 1e-7,
+                                           max_iter_ot = 20, max_iter_cd = 10000, warm_start = True)
+        print(stcs_remtw)
+        for i, stc in enumerate(stcs_remtw):
+            fname_stc = mne_op.get_fname(subjects[i], 'stc', src_spacing = src_spacing,
+                                         stc_method = stc_method, task = task, stim=stim)
+            fpath_stc = os.path.join(project_dir, 'Data', 'stc', fname_stc)
+            stc.save(fpath_stc)
+
+# Morph subject data to fsaverage
+if steps['morph_to_fsaverage']:
+    print('morphing to fsaverage')
+    for subject in subjects:
         mne_op.morph_to_fsaverage(subject, project_dir, src_spacing,
                                   stc_method, task, stimuli, overwrite)
 
-# Following steps are run on averaged data or produce averaged data
-
 # Average data from all subjects for selected task and stimuli
 if steps['average_stcs_source_space']:
+    print('Averaging stcs in source space')
     mne_op.average_stcs_source_space(subjects, project_dir, src_spacing, stc_method,
                                      task, stimuli, overwrite)
     
