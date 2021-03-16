@@ -28,7 +28,7 @@ mne.set_config('SUBJECTS_DIR', subjects_dir)
 # List of subject names
 
 exclude = [5, 8, 13, 15]
-subjects = ['MEGCI_S' + str(idx) for idx in list(range(17,25)) if idx not in exclude]
+subjects = ['MEGCI_S' + str(idx) for idx in list(range(1,25)) if idx not in exclude]
 
 # Source point spacing for source space calculation
 
@@ -36,11 +36,11 @@ src_spacing = 'oct6'
 
 # Which BEM model to use for forward solution, <subject name> + <bem_suffix>.fif
 
-bem_suffix = '-3-shell-bem-sol'
+bem_suffix = '-1-shell-bem-sol'
 
 # Which inversion method to use for source activity estimate
 
-stc_method = 'dSPM'
+stc_method = 'eLORETA'
 
 # Which task is currently investigated
 
@@ -73,7 +73,7 @@ colors = ['mistyrose', 'plum', 'thistle', 'lightsteelblue', 'lightcyan', 'lightg
 
 # Overwrite existing files
 
-overwrite = False
+overwrite = True
 
 ### Pipeline steps to run -----------------------------------------------------
 
@@ -82,14 +82,14 @@ steps = {'prepare_directories' :        False,
          'compute_source_space' :       False,
          'calculate_bem_solution' :     False,
          'calculate_forward_solution' : False,
-         'compute_covariance_matrix' :  False,
-         'construct_inverse_operator' : False,
-         'estimate_source_timecourse' : False,
-         'morph_to_fsaverage' :         False,
-         'average_stcs_source_space' :  False,
+         'compute_covariance_matrix' :  True,
+         'construct_inverse_operator' : True,
+         'estimate_source_timecourse' : True,
+         'morph_to_fsaverage' :         True,
+         'average_stcs_source_space' :  True,
          'label_peaks' :                False,
-         'expand_peak_labels' :         False,
-         'label_all_vertices' :         True}
+         'expand_peak_labels' :         True,
+         'label_all_vertices' :         False}
 
 
 ### Run the pipeline ----------------------------------------------------------
@@ -104,7 +104,8 @@ if steps['prepare_directories']:
                     'Data/stc_m',
                     'Data/avg',
                     'Data/labels',
-                    'Data/cov']:
+                    'Data/cov',
+                    'Data/plot']:
         try:
             os.makedirs(project_dir + dirname)
         except FileExistsError:

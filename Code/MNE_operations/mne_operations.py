@@ -393,7 +393,7 @@ def average_stcs_source_space(subjects, project_dir, src_spacing, stc_method,
                           src_spacing = src_spacing, task = task, stim = stim)
         fpath = os.path.join(project_dir, 'Data', 'avg', fname)
         
-        if overwrite or not os.path.isfile(fpath):
+        if overwrite or not os.path.isfile(fpath + '-lh.stc'):
             # Load stcs for all subjects with this stimulus
             stcs = []
             for subject in subjects:
