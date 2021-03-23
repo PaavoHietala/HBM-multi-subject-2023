@@ -10,6 +10,7 @@ import mne
 import os
 import sys
 import numpy as np
+from joblib import Parallel, delayed
 
 # Dirty hack to get the relative import from same dir to work
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
@@ -30,10 +31,10 @@ project_dir = '/m/nbe/scratch/megci/MFinverse/reMTW/'
 subjects_dir = '/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/'
 mne.set_config('SUBJECTS_DIR', subjects_dir)
 
-# List of subject names
+# List of subject names, subjects 1-24 available ex. those in exclude 
 
 exclude = [5, 8, 13, 15]
-subjects = ['MEGCI_S' + str(idx) for idx in list(range(1,7)) if idx not in exclude]
+subjects = ['MEGCI_S' + str(idx) for idx in list(range(1,10)) if idx not in exclude]
 
 # Source point spacing for source space calculation
 
@@ -51,9 +52,9 @@ stc_method = 'remtw'
 
 task = 'f'
 
-# Which stimuli to analyze
+# Which stimuli to analyze, sectors 1-24 available
 
-stimuli = ['sector' + str(num) for num in range(1,24)]
+stimuli = ['sector' + str(num) for num in range(6,25)]
 
 # List of raw rest files for covariance matrix and extracting sensor info
 
@@ -85,12 +86,13 @@ overwrite = True
 
 steps = {'prepare_directories' :        False,
          'compute_source_space' :       False,
+         'restrict_src_to_label' :      False,
          'calculate_bem_solution' :     False,
          'calculate_forward_solution' : False,
          'compute_covariance_matrix' :  False,
-         'estimate_source_timecourse' : False,
-         'morph_to_fsaverage' :         False,
-         'average_stcs_source_space' :  False,
+         'estimate_source_timecourse' : True,
+         'morph_to_fsaverage' :         True,
+         'average_stcs_source_space' :  True,
          'label_peaks' :                False,
          'expand_peak_labels' :         False,
          'label_all_vertices' :         False}
@@ -119,6 +121,10 @@ if steps['prepare_directories']:
 if steps['compute_source_space']:
     mne_op.compute_source_space('fsaverage', project_dir, src_spacing, overwrite,
                                 add_dist = False)
+
+if steps['restrict_src_to_label']:
+    labels = mne.read_labels_from_annot('fsaverage', 'aparc.a2009s')
+    mne_op.restrict_src_to_label('fsaverage', project_dir, src_spacing, overwrite, labels)
 
 # Following steps are run on per-subject basis
 for idx, subject in enumerate(subjects):
@@ -172,9 +178,6 @@ if steps['estimate_source_timecourse']:
         noise_cov = mne.read_cov(os.path.join(project_dir, 'Data', 'cov', fname_cov), verbose = False)
         noise_covs.append(noise_cov)
 
-    # print('Defining base M')
-    # base_M = groundmetric(fwds_[0]['nsource'], p=2, normed = True)
-
     # Load fsaverage source space for reference
     fname_ref = mne_op.get_fname('fsaverage', 'src', src_spacing = src_spacing)
     fpath_ref = os.path.join(project_dir, 'Data', 'src', fname_ref)
@@ -183,50 +186,17 @@ if steps['estimate_source_timecourse']:
         
     # Prepare forward operators for the inversion
     fwds = prepare_fwds(fwds_, src_ref, copy = False)
-        
-    # Solve the inverse problem for each stimulus with reMTW
+    '''
+    # Solve the inverse problem for each stimulus with reMTW in parallel
+    pll = Parallel(n_jobs = 2, backend = "multiprocessing")
+    pll_func = delayed(mne_op.group_inversion)
+    jobs = (pll_func(subjects, project_dir, src_spacing, stc_method, task, stim, fwds,
+                        evokeds, noise_covs, overwrite) for stim in stimuli)
+    _ = pll(jobs)'''
+
     for stim in stimuli:
-        print("Solving for stimulus " + stim)
-        '''
-        # Check that stcs for all stimuli have been calculated and saved
-        comp = False
-        for subject in subjects:
-            fname_stc = mne_op.get_fname(subject, 'stc', src_spacing = src_spacing,
-                                         stc_method = stc_method, task = task, stim=stim)
-            fpath_stc = os.path.join(project_dir, 'Data', 'stc', fname_stc)
-            if not os.path.isfile(fpath_stc + '-lh.stc'):
-                print(fpath_stc + " Doesn't exist")
-                comp = True
-                break
-        
-        if overwrite or comp:  '''     
-        # Calculate the inverse solutions for all subjects simultaneously
-        stim_idx = int("".join([i for i in stim if i in "1234567890"])) - 1
-        print("Stimulus ID (sector - 1): " + str(stim_idx))
-        evokeds_stimx = [ev.crop(0.08,0.08) for ev in evokeds[stim_idx]] # ev.crop(0.7, 0.9)
-        print(evokeds_stimx)
-        # stcs_remtw = compute_group_inverse(fwds, evokeds_stimx, noise_covs, #M=np.copy(base_M),
-        #                                    method = 'remtw', alpha = 1, beta = 0.6, concomitant = True,
-        #                                    n_jobs = 16, gpu = True, ot_threshold = 1e-7, spatiotemporal = False,
-        #                                    max_iter_ot = 20, max_iter_cd = 10000, warm_start = True)
-        stcs_remtw = compute_group_inverse(fwds, evokeds_stimx, noise_covs,
-                                           method = 'remtw',
-                                           spatiotemporal = False,
-                                           concomitant = True,
-                                           alpha = 0.5,
-                                           beta = 0.5,
-                                           n_jobs = 15,
-                                           stable=True,
-                                           gpu = True)
-        
-        # Save the returned stcs to disk
-        print(stcs_remtw)
-        for i, stc in enumerate(stcs_remtw):
-            fname_stc = mne_op.get_fname(subjects[i], 'stc', src_spacing = src_spacing,
-                                         stc_method = stc_method, task = task, stim=stim)
-            fpath_stc = os.path.join(project_dir, 'Data', 'stc', fname_stc)
-            print(fpath_stc)
-            stc.save(fpath_stc)
+        mne_op.group_inversion(subjects, project_dir, src_spacing, stc_method,
+                               task, stim, fwds, evokeds, noise_covs, overwrite, beta = 0.3)
 
 # Morph subject data to fsaverage
 if steps['morph_to_fsaverage']:

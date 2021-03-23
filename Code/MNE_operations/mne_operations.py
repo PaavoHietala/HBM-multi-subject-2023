@@ -13,7 +13,13 @@ import os
 from surfer import utils
 import matplotlib
 import numpy as np
+from joblib import Parallel, delayed
 from sklearn.preprocessing import normalize
+from groupmne import compute_group_inverse
+from groupmne.utils import _compute_ground_metric
+import matplotlib.pyplot as plt
+from mutar.utils import  groundmetric
+import copy
 
 def get_fname(subject, ftype, stc_method = None, src_spacing = None,
               fname_raw = None, task = None, stim = None, layers = None, hemi = None):
@@ -114,7 +120,45 @@ def compute_source_space(subject, project_dir, src_spacing, overwrite = False,
             src_ref = mne.read_source_spaces(fpath_ref)
             src = mne.morph_source_spaces(src_ref, subject_to=subject)
         src.save(fpath, overwrite = True)
-   
+
+def restrict_src_to_label(subject, project_dir, src_spacing, overwrite, labels):
+    fname = get_fname(subject, 'src', src_spacing = src_spacing)
+    fpath = os.path.join(project_dir, 'Data', 'src', fname)
+
+    if overwrite or not os.path.isfile(fpath_r):
+        # Load original source space
+        src = mne.read_source_spaces(fpath)
+
+        for s, hemi in zip(src, ['lh', 'rh']):
+            vertno = np.where(s['inuse'])[0]
+
+            # Mark only the source points under the labels active
+            verts = np.concatenate([l.get_vertices_used(vertno) for l in labels
+                                    if l.name != 'Unknown-' + hemi and hemi in l.name])
+            # tris = np.concatenate([l.get_tris(s['use_tris'], vertno) for l in labels
+            #                        if l.name != 'Unknown-' + hemi and hemi in l.name])
+
+            # Groupmne crashes if lh and rh have different amount of source points
+            if hemi == 'rh' and src[0]['nuse'] != src[1]['nuse']:
+                verts = verts[:-1]
+            deleted = s['nuse'] - len(verts)
+
+            s['inuse'][[i for i in vertno if i not in verts]] = 0
+            # s['use_tris'] = tris
+            # s['nuse_tri'] = np.array([tris.shape[0]])
+            s['nuse'] -= deleted
+            s['vertno'] = np.where(s['inuse'])[0]
+
+        print(src[0]['vertno'])
+        print(src[0]['inuse'].dtype, len(src[0]['inuse']), type(src[0]['inuse']), src[0]['inuse'].shape)
+        print(src[0]['vertno'].dtype, len(src[0]['vertno']), type(src[0]['vertno']), src[0]['vertno'].shape)
+        print(type(src[0]['nuse']), src[0]['nuse'])
+
+        #input()
+        #src.plot()
+
+        src.save(fpath, overwrite = True)
+
 def calculate_bem_solution(subject, project_dir, overwrite):
     '''
     Calculate bem solutions from FreeSurfer surfaces.
@@ -674,4 +718,262 @@ def label_all_vertices(subjects, project_dir, src_spacing, stc_method, task,
     brain_lh.show_view({'elevation' : 100, 'azimuth' : -55}, distance = 350)
     brain_rh.show()
     brain_rh.show_view({'elevation' : 100, 'azimuth' : -125}, distance = 350)
+
+def reMTW_wrapper(fwds, evokeds, noise_covs, solver_kwargs):
+    stcs = compute_group_inverse(fwds, evokeds, noise_covs, method = 'remtw',
+                                 spatiotemporal = False,
+                                 n_jobs = 15, stable=True, gpu = True,
+                                 tol_ot=1e-4, max_iter_ot=20, tol=1e-4,
+                                 max_iter=2000, positive=False, tol_reweighting = 1e-2,
+                                 max_iter_reweighting = 100, **solver_kwargs)
+    avg = 0
+    for stc in stcs:
+        avg += np.count_nonzero(stc.data)
+    avg = avg / len(stcs)
+
+    return (stcs, avg)
+
+def reMTW_find_alpha(fwds, evokeds, noise_covs, stim, project_dir, solver_kwargs):
+    log = dict(alphas = [], actives = [])
     
+    # Set baseline parameters
+    solver_kwargs['alpha'] = 1
+    if solver_kwargs['concomitant'] == False:
+        solver_kwargs['beta'] = 0.3
+    else:
+        solver_kwargs['beta'] = 0.7
+
+    # Get starting average with alpha = 1
+    stcs, avg = reMTW_wrapper(fwds, evokeds, noise_covs, solver_kwargs)
+
+    print("Got " + str(avg) + " active sources with alpha=1")
+    log['alphas'] += [solver_kwargs['alpha']] * 3
+    log['actives'] += [avg] * 3
+
+    # Find alpha with 5 iterations
+    history = ['small' if avg < 50 else 'big'] * 3
+    for i in range(5):
+        if history[0] == history[1] and history[1] == history[2]:
+            # Strolling a plateau, take a jump to get near the gradient faster
+            if history[2] == 'small':
+                solver_kwargs['alpha'] *= 5
+            elif history[2] == 'big':
+                solver_kwargs['alpha'] *= 0.2
+        elif history[1] != history[2]:
+            # Moved over aMax -> search the midpoint of these points
+            solver_kwargs['alpha'] = (log['alphas'][-1] + log['alphas'][-2]) / 2
+        elif history[0] != history[1]:
+            # aMax was not between the point index [0, -1] -> it's between [0, -2]
+            solver_kwargs['alpha'] = (log['alphas'][-1] + log['alphas'][-3]) / 2
+
+        print("Moving to alpha=" + str(solver_kwargs['alpha']))
+        try:
+            stcs, avg = reMTW_wrapper(fwds, evokeds, noise_covs, solver_kwargs)
+            print("Got " + str(avg) + " active sources with alpha=" + str(solver_kwargs['alpha']))
+            log['alphas'].append(solver_kwargs['alpha'])
+            log['actives'].append(avg)
+        except ValueError as e:
+            print("Alpha=" + str(solver_kwargs['alpha']) + " caused an error (skipping):")
+            print(e)
+
+        print(log)
+
+        history.append('small' if avg < 50 else 'big')
+        history.pop(0)
+
+    # Find the elbow = the highest gradient as alpha_max
+    log['actives'] = [avg for alpha, avg in sorted(zip(log['alphas'], log['actives']))]
+    log['alphas'].sort()
+
+    aMax_idx = np.argmax(np.abs(np.gradient(log['actives'])))
+    aMax = log['alphas'][aMax_idx]
+
+    print("Got aMax=" + str(aMax))
+
+    plt.ioff()
+    plt.plot(log["alphas"], log['actives'])
+    plt.yscale('log')
+    plt.xlabel('alpha')
+    plt.ylabel('Average active sources')
+    plt.savefig(project_dir + 'Data/plot/alphas_' + stim + '.png')
+    plt.close()
+
+    # Good heuristic for alpha is 0.5 * aMax
+    return 0.5 * aMax
+
+def reMTW_find_beta(fwds, evokeds, noise_covs, stim, project_dir, target,
+                    solver_kwargs):
+    log = dict(betas = [], actives = [])
+    
+    # Set baseline parameters
+    solver_kwargs['beta'] = 0.4
+
+    # Get starting average with beta = 0.4
+    try:
+        stcs, avg = reMTW_wrapper(fwds, evokeds, noise_covs, solver_kwargs)
+        beta_ = solver_kwargs['beta']
+        print("Got " + str(avg) + " active sources with beta=" + str(solver_kwargs['beta']))
+        log['betas'] += [solver_kwargs['beta']]
+        log['actives'] += [avg]
+    except ValueError as e:
+        print("Beta=" + str(solver_kwargs['beta']) + " caused an error (skipping):")
+        print(e)
+        solver_kwargs['beta'] -= 0.1
+
+    if avg == target:
+        return (stcs, solver_kwargs['beta'])
+
+    # Find beta with 5 iterations
+    history = ['small' if avg < target else 'big'] * 3
+    for i in range(5):
+        if history[0] == history[1] and history[1] == history[2]:
+            # Strolling a plateau, take a jump to get near the optimal beta faster
+            if history[2] == 'small':
+                solver_kwargs['beta'] += 0.1
+            elif history[2] == 'big':
+                solver_kwargs['beta'] -= 0.1
+        elif history[1] != history[2]:
+            # Moved over beta -> search the midpoint of these points
+            solver_kwargs['beta'] = (log['betas'][-1] + log['betas'][-2]) / 2
+        elif history[0] != history[1]:
+            # beta was not between the points [0, -1] -> it's between [0, -2]
+            solver_kwargs['beta'] = (log['betas'][-1] + log['betas'][-3]) / 2
+
+        print("Moving to beta=" + str(solver_kwargs['beta']))
+        try:
+            stcs, avg = reMTW_wrapper(fwds, evokeds, noise_covs, solver_kwargs)
+            beta_ = solver_kwargs['beta']
+            print("Got " + str(avg) + " active sources with beta=" + str(solver_kwargs['beta']))
+            log['betas'].append(solver_kwargs['beta'])
+            log['actives'].append(avg)
+        except ValueError as e:
+            print("Beta=" + str(solver_kwargs['beta']) + " caused an error (skipping):")
+            print(e)
+
+        if avg == target:
+            break
+
+        history.append('small' if avg < target else 'big')
+        history.pop(0)
+
+    # Plot avg vs beta
+    log['actives'] = [avg for alpha, avg in sorted(zip(log['betas'], log['actives']))]
+    log['betas'].sort()
+
+    print("Got beta_=" + str(beta_))
+
+    plt.ioff()
+    plt.plot(log["betas"], log['actives'])
+    plt.savefig(project_dir + 'Data/plot/betas_' + stim + '.png')
+    plt.close()
+
+    return (stcs, beta_)
+
+def group_inversion_parallel(subjects, project_dir, src_spacing, stc_method, task, stim, fwds,
+                             evokeds, noise_covs, overwrite, **solver_kwargs):
+    if stc_method == "remtw":
+        # Test all alphas in parallel to find the best, order is preserved for return values
+        '''
+        print("Computing ground metric M...")
+        src_ref = fwds[0]["sol_group"]["src_ref"]
+        _group_info = fwds[0]["sol_group"]["group_info"]
+        M_ = _compute_ground_metric(src_ref, _group_info)
+        M_.setflags(write=True)
+        Ms = [copy.deepcopy(M_) for a in solver_kwargs['alphas']]
+        print(M_.shape)
+        print(M_)
+        '''
+        print(solver_kwargs.keys())
+        print(solver_kwargs['epsilon'])
+        pll = Parallel(n_jobs = len(solver_kwargs['alphas']), backend = "multiprocessing")
+        pll_func = delayed(compute_group_inverse)
+        jobs = (pll_func(fwds, evokeds, noise_covs, method = 'remtw',
+                         spatiotemporal = False, concomitant = False, alpha = alpha,
+                         beta = 0.3, n_jobs = 15, stable=True, gpu = True,
+                         tol_ot=1e-4, max_iter_ot=20, tol=1e-4,
+                         max_iter=2000, positive=False, tol_reweighting = 1e-2,
+                         max_iter_reweighting = 100, epsilon = solver_kwargs['epsilon'],
+                         gamma = solver_kwargs['gamma'])
+                         for alpha in solver_kwargs["alphas"])
+
+        stcs_remtw = pll(jobs)
+        '''
+        stcs_remtw = []
+        for alpha in solver_kwargs["alphas"]:
+            stcs_remtw.append(compute_group_inverse(fwds, evokeds, noise_covs, method = 'remtw',
+                                                    spatiotemporal = False, concomitant = True, alpha = alpha,
+                                                    beta = 0.5, n_jobs = 15, stable=True, gpu = True))
+        '''
+
+        active = []
+        for stcs in stcs_remtw:
+            avg = 0
+            for stc in stcs:
+                avg += np.count_nonzero(stc.data)
+            active.append(avg / len(stcs))
+
+        print('Active points per tested alpha: ' + str(active))
+        plt.ioff()
+        plt.plot(solver_kwargs["alphas"], active)
+        plt.savefig(project_dir + 'Data/plot/alphas_' + stim + '.png')
+        plt.close()
+
+def group_inversion(subjects, project_dir, src_spacing, stc_method, task, stim, fwds,
+                    evokeds, noise_covs, overwrite, **solver_kwargs):
+    
+    print("Solving for stimulus " + stim)
+    stim_idx = int("".join([i for i in stim if i in "1234567890"])) - 1
+    evokeds = [ev.crop(0.08,0.08) for ev in evokeds[stim_idx]]
+    print("Stimulus ID (sector - 1): " + str(stim_idx))
+
+    # Check that stcs for all stimuli have been calculated and saved
+    missing = False
+    for subject in subjects:
+        fname_stc = get_fname(subject, 'stc', src_spacing = src_spacing,
+                                        stc_method = stc_method, task = task, stim=stim)
+        fpath_stc = os.path.join(project_dir, 'Data', 'stc', fname_stc)
+        if not os.path.isfile(fpath_stc + '-lh.stc'):
+            print(fpath_stc + " Doesn't exist")
+            missing = True
+            break
+    
+    if missing == False and overwrite == False:
+        return
+
+    if stc_method == "remtw":
+        # Set default values if they are not set in function call
+        if 'concomitant' not in solver_kwargs:
+            solver_kwargs['concomitant'] = False
+        #if 'epsilon' not in solver_kwargs:
+        #    solver_kwargs['epsilon'] = 5. / fwds[0]['sol']['data'].shape[-1]
+        #if 'gamma' not in solver_kwargs:
+        #    solver_kwargs['gamma'] = 1
+
+        # Find 0.5 * alpha_max, where alpha_max spreads activation everywhere
+        if 'alpha' not in solver_kwargs:
+            print('Finding optimal alpha for ' + stim)
+            alpha = reMTW_find_alpha(fwds, evokeds, noise_covs, stim, project_dir,
+                                     copy.deepcopy(solver_kwargs))
+            solver_kwargs['alpha'] = alpha
+        
+        # Find beta which produces exactly <target> active source points
+        if 'beta' not in solver_kwargs:
+            print('Finding optimal beta for ' + stim)
+            target = 2
+            stcs, beta = reMTW_find_beta(fwds, evokeds, noise_covs, stim, project_dir,
+                                         target, solver_kwargs)
+        
+        # Everything has been set beforehand, just run the inversion
+        else:
+            stcs, _ = reMTW_wrapper(fwds, evokeds, noise_covs, solver_kwargs)
+
+    # Save the returned source time course estimates to disk
+    print(stcs)
+    for i, stc in enumerate(stcs):
+        fname_stc = get_fname(subjects[i], 'stc', src_spacing = src_spacing,
+                                        stc_method = stc_method, task = task, stim=stim)
+        fpath_stc = os.path.join(project_dir, 'Data', 'stc', fname_stc)
+        print(fpath_stc)
+        stc.save(fpath_stc)
+    
+    return None

@@ -40,7 +40,7 @@ bem_suffix = '-1-shell-bem-sol'
 
 # Which inversion method to use for source activity estimate
 
-stc_method = 'eLORETA'
+stc_method = 'dSPM'
 
 # Which task is currently investigated
 
@@ -82,11 +82,11 @@ steps = {'prepare_directories' :        False,
          'compute_source_space' :       False,
          'calculate_bem_solution' :     False,
          'calculate_forward_solution' : False,
-         'compute_covariance_matrix' :  True,
-         'construct_inverse_operator' : True,
-         'estimate_source_timecourse' : True,
-         'morph_to_fsaverage' :         True,
-         'average_stcs_source_space' :  True,
+         'compute_covariance_matrix' :  False,
+         'construct_inverse_operator' : False,
+         'estimate_source_timecourse' : False,
+         'morph_to_fsaverage' :         False,
+         'average_stcs_source_space' :  False,
          'label_peaks' :                False,
          'expand_peak_labels' :         True,
          'label_all_vertices' :         False}
