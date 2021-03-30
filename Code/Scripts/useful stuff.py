@@ -27,11 +27,15 @@ b.show_view({'elevation' : 100, 'azimuth' : -55}, distance = 500)
 # b.show()
 
 #%% plot
-subject = 'fsaverage'
+subject = 'MEGCI_S9'
 method = 'remtw'
-stim = 'sector5'
-hemi = 'lh'
-stc = mne.read_source_estimate('/m/nbe/scratch/megci/MFinverse/reMTW/Data/avg/'+subject+'-ico4-'+method+'-f-'+stim+'-'+hemi+'.stc')
+stim = 'sector24'
+hemi = 'rh'
+stc = mne.read_source_estimate('/m/nbe/scratch/megci/MFinverse/reMTW/Data/stc/'+subject+'-ico4-'+method+'-f-'+stim+'-'+hemi+'.stc')
+
+#for i in range(1,25):
+#    stim = 'sector' + str(i)
+#stc = mne.read_source_estimate('/m/nbe/scratch/megci/MFinverse/reMTW/Data/avg/'+subject+'-ico4-'+method+'-f-'+stim+'-'+hemi+'.stc')
 
 if np.count_nonzero(stc.data[:]) == 0:
     print("Zero estimate")
@@ -51,6 +55,8 @@ else:
         v1_rh = mne.read_label('/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/'+subject+'/label/rh.V1_exvivo.label', subject)
         b.add_label(v1_rh, borders = 2)
         b.show_view({'elevation' : 100, 'azimuth' : -125}, distance = 500)
+    #b.save_image('/m/nbe/scratch/megci/MFinverse/reMTW/Data/plot/' + '_'.join([subject, method, stim, hemi]) + '.jpg')
+    #b.close()
 #%% get lambda_max
 project_dir = '/m/nbe/scratch/megci/MFinverse/reMTW/'
 subject = 'MEGCI_S1'

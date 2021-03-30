@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
+Pipeline utilizing the Janati et al. (2020) reweighted Minimum Wasserstein Estimate
+(MWE0.5 or reMTW).
+
 Created on Tue Feb  2 15:31:30 2021
 
 @author: hietalp2
@@ -10,17 +13,20 @@ import mne
 import os
 import sys
 import numpy as np
+from datetime import datetime
 from joblib import Parallel, delayed
 
 # Dirty hack to get the relative import from same dir to work
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
-from MNE_operations import mne_operations as mne_op
+from Core import mne_common, solvers, utils, visualize
 
 from groupmne import compute_group_inverse, prepare_fwds
 from mutar.utils import  groundmetric
 
-### Parameters ----------------------------------------------------------------
+print(datetime.now().strftime("%D.%M.%Y %H:%M:%S"),
+      "Started pipeline_reMTW with parameters", sys.argv[1:])
 
+### Parameters ----------------------------------------------------------------
 
 # Root data directory of the project
 
@@ -54,7 +60,7 @@ task = 'f'
 
 # Which stimuli to analyze, sectors 1-24 available
 
-stimuli = ['sector' + str(num) for num in range(6,25)]
+stimuli = ['sector' + str(num) for num in range(12,13)]
 
 # List of raw rest files for covariance matrix and extracting sensor info
 
@@ -73,23 +79,52 @@ evoked_files = [project_dir + 'Data/Evoked/' + subject + '_f-ave.fif' for
 
 # List of colors for each stimulus label
 
-colors = ['mistyrose', 'plum', 'thistle', 'lightsteelblue', 'lightcyan', 'lightgreen', 'lightyellow', 'papayawhip',
-          'lightcoral', 'violet', 'mediumorchid', 'royalblue', 'aqua', 'mediumspringgreen', 'khaki', 'navajowhite',
-          'red', 'purple', 'blueviolet', 'blue', 'turquoise', 'lime', 'yellow', 'orange']
+colors = ['mistyrose', 'plum', 'thistle', 'lightsteelblue', 'lightcyan', 'lightgreen',
+          'lightyellow', 'papayawhip', 'lightcoral', 'violet', 'mediumorchid', 'royalblue',
+          'aqua', 'mediumspringgreen', 'khaki', 'navajowhite', 'red', 'purple',
+          'blueviolet', 'blue', 'turquoise', 'lime', 'yellow', 'orange']
 
 # Overwrite existing files
 
 overwrite = True
 
+# List of stimuli that should show response on both hemispheres:
+
+bilaterals = ['sector3', 'sector7', 'sector11', 'sector15', 'sector19', 'sector23']
+
+# How many active source point are we aiming for
+
+target = 3
+
+# Check CLI arguments, override other settings
+
+alpha = None
+beta = None
+target = None
+for arg in sys.argv[1:]:
+    if arg.startswith('-stim='):
+        stimuli = arg[6:].split(',')
+        print("Solving for stimuli", stimuli)
+    elif arg.startswith('-stimnum='):
+        stimuli = ['sector' + str(i) for i in arg[9:].split(',')]
+        print("Solving for stimuli", stimuli)
+    elif arg.startswith('-alpha='):
+        alpha = float(arg[7:])
+    elif arg.startswith('-beta='):
+        beta = float(arg[6:])
+    elif arg.startswith('-target='):
+        target = float(arg[8:])
+    else:
+        print('Unknown argument: ' + arg)
+
 ### Pipeline steps to run -----------------------------------------------------
 
-
-steps = {'prepare_directories' :        False,
-         'compute_source_space' :       False,
+steps = {'prepare_directories' :        True,
+         'compute_source_space' :       True,
          'restrict_src_to_label' :      False,
-         'calculate_bem_solution' :     False,
-         'calculate_forward_solution' : False,
-         'compute_covariance_matrix' :  False,
+         'calculate_bem_solution' :     True,
+         'calculate_forward_solution' : True,
+         'compute_covariance_matrix' :  True,
          'estimate_source_timecourse' : True,
          'morph_to_fsaverage' :         True,
          'average_stcs_source_space' :  True,
@@ -102,57 +137,42 @@ steps = {'prepare_directories' :        False,
 
 # Prepare all needed directories for the data
 if steps['prepare_directories']:
-    for dirname in ['Data',
-                    'Data/fwd',
-                    'Data/src',
-                    'Data/inv',
-                    'Data/stc',
-                    'Data/stc_m',
-                    'Data/avg',
-                    'Data/labels',
-                    'Data/cov',
-                    'Data/plot']:
-        try:
-            os.makedirs(project_dir + dirname)
-        except FileExistsError:
-            pass
+    utils.prepare_directories(project_dir)
 
 # Compute source space for fsaverage before subjects
 if steps['compute_source_space']:
-    mne_op.compute_source_space('fsaverage', project_dir, src_spacing, overwrite,
-                                add_dist = False)
+    mne_common.compute_source_space('fsaverage', project_dir, src_spacing, overwrite,
+                                    add_dist = False)
 
 if steps['restrict_src_to_label']:
     labels = mne.read_labels_from_annot('fsaverage', 'aparc.a2009s')
-    mne_op.restrict_src_to_label('fsaverage', project_dir, src_spacing, overwrite, labels)
+    utils.restrict_src_to_label('fsaverage', project_dir, src_spacing, overwrite, labels)
 
 # Following steps are run on per-subject basis
-for idx, subject in enumerate(subjects):
-    print(subject)
-    
+for idx, subject in enumerate(subjects):   
     # Compute source spaces for subjects and save them in ../Data/src/
     if steps['compute_source_space']:
-        mne_op.compute_source_space(subject, project_dir, src_spacing, overwrite,
-                                    morph = True)
+        mne_common.compute_source_space(subject, project_dir, src_spacing, overwrite,
+                                        morph = True)
     
     # Setup forward model based on FreeSurfer BEM surfaces
     if steps['calculate_bem_solution']:
-        mne_op.calculate_bem_solution(subject, project_dir, overwrite)
+        mne_common.calculate_bem_solution(subject, project_dir, overwrite)
     
     # Calculate forward solutions for the subjects and save them in ../Data/fwd/
     if steps['calculate_forward_solution']:
         bem = os.path.join(subjects_dir, subject, 'bem', subject + bem_suffix + '.fif')
         raw = rest_raws[idx]
         coreg = coreg_files[idx]
-        mne_op.calculate_forward_solution(subject, project_dir, src_spacing,
-                                          bem, raw, coreg, overwrite)
+        mne_common.calculate_forward_solution(subject, project_dir, src_spacing,
+                                              bem, raw, coreg, overwrite)
         
     # Calculate noise covariance matrix from rest data
     if steps['compute_covariance_matrix']:
         raw = rest_raws[idx]
-        mne_op.compute_covariance_matrix(subject, project_dir, raw, overwrite)
+        mne_common.compute_covariance_matrix(subject, project_dir, raw, overwrite)
 
-# Following steps are run on simulaneously for all subjects
+# Following steps are run on simulaneously for all subjects --------------------
 
 # Estimate source timecourses
 if steps['estimate_source_timecourse']:
@@ -170,58 +190,56 @@ if steps['estimate_source_timecourse']:
     fwds_ = []
     noise_covs = []
     for idx, subject in enumerate(subjects):
-        fname_fwd = mne_op.get_fname(subject, 'fwd', src_spacing = src_spacing)
+        fname_fwd = utils.get_fname(subject, 'fwd', src_spacing = src_spacing)
         fpath_fwd = os.path.join(project_dir, 'Data', 'fwd', fname_fwd)
         fwds_.append(mne.read_forward_solution(fpath_fwd, verbose = False))
         
-        fname_cov = mne_op.get_fname(subject, 'cov', fname_raw = rest_raws[idx])
-        noise_cov = mne.read_cov(os.path.join(project_dir, 'Data', 'cov', fname_cov), verbose = False)
+        fname_cov = utils.get_fname(subject, 'cov', fname_raw = rest_raws[idx])
+        noise_cov = mne.read_cov(os.path.join(project_dir, 'Data', 'cov', fname_cov),
+                                 verbose = False)
         noise_covs.append(noise_cov)
 
     # Load fsaverage source space for reference
-    fname_ref = mne_op.get_fname('fsaverage', 'src', src_spacing = src_spacing)
+    fname_ref = utils.get_fname('fsaverage', 'src', src_spacing = src_spacing)
     fpath_ref = os.path.join(project_dir, 'Data', 'src', fname_ref)
     
     src_ref = mne.read_source_spaces(fpath_ref)
         
     # Prepare forward operators for the inversion
     fwds = prepare_fwds(fwds_, src_ref, copy = False)
-    '''
-    # Solve the inverse problem for each stimulus with reMTW in parallel
-    pll = Parallel(n_jobs = 2, backend = "multiprocessing")
-    pll_func = delayed(mne_op.group_inversion)
-    jobs = (pll_func(subjects, project_dir, src_spacing, stc_method, task, stim, fwds,
-                        evokeds, noise_covs, overwrite) for stim in stimuli)
-    _ = pll(jobs)'''
 
+    # Solve the inverse problem for each stimulus
     for stim in stimuli:
-        mne_op.group_inversion(subjects, project_dir, src_spacing, stc_method,
-                               task, stim, fwds, evokeds, noise_covs, overwrite, beta = 0.3)
+        if stim in bilaterals:
+            target *= 2
+        solvers.group_inversion(subjects, project_dir, src_spacing, stc_method,
+                                task, stim, fwds, evokeds, noise_covs, target,
+                                overwrite, alpha = alpha, beta = beta)
 
 # Morph subject data to fsaverage
 if steps['morph_to_fsaverage']:
     print('morphing to fsaverage')
     for subject in subjects:
-        mne_op.morph_to_fsaverage(subject, project_dir, src_spacing,
-                                  stc_method, task, stimuli, overwrite)
+        mne_common.morph_to_fsaverage(subject, project_dir, src_spacing,
+                                      stc_method, task, stimuli, overwrite)
 
 # Average data from all subjects for selected task and stimuli
 if steps['average_stcs_source_space']:
     print('Averaging stcs in source space')
-    mne_op.average_stcs_source_space(subjects, project_dir, src_spacing, stc_method,
-                                     task, stimuli, overwrite)
+    utils.average_stcs_source_space(subjects, project_dir, src_spacing, stc_method,
+                                    task, stimuli, overwrite)
     
 # Select peaks from all averaged stimuli and plot on fsaverage
 if steps['label_peaks']:
-    mne_op.label_peaks(subjects, project_dir, src_spacing, stc_method, task,
-                       stimuli, colors, overwrite)
+    visualize.label_peaks(subjects, project_dir, src_spacing, stc_method, task,
+                          stimuli, colors, overwrite)
 
 # Select peaks from all averaged stimuli, grow them 7mm and plot on lh + rh
 if steps['expand_peak_labels']:
-    mne_op.expand_peak_labels(subjects, project_dir, src_spacing, stc_method,
-                              task, stimuli, colors, overwrite)
+    visualize.expand_peak_labels(subjects, project_dir, src_spacing, stc_method,
+                                 task, stimuli, colors, overwrite)
 
 # Label each vertex based on normalized stimulus data and plot on lh + rh
 if steps['label_all_vertices']:
-    mne_op.label_all_vertices(subjects, project_dir, src_spacing, stc_method,
-                              task, stimuli, colors, overwrite)
+    visualize.label_all_vertices(subjects, project_dir, src_spacing, stc_method,
+                                 task, stimuli, colors, overwrite)
