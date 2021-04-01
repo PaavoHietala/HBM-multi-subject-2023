@@ -14,11 +14,11 @@ import os
 import sys
 import numpy as np
 from datetime import datetime
-from joblib import Parallel, delayed
+# from joblib import Parallel, delayed
 
 # Dirty hack to get the relative import from same dir to work
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
-from Core import mne_common, solvers, utils, visualize
+from Core import mne_common, solvers, utils, visualize, reMTW
 
 from groupmne import compute_group_inverse, prepare_fwds
 from mutar.utils import  groundmetric
@@ -100,7 +100,10 @@ target = 3
 
 alpha = None
 beta = None
-target = None
+target = 3
+tenplot = False
+start = 0.08
+stop = 0.08
 for arg in sys.argv[1:]:
     if arg.startswith('-stim='):
         stimuli = arg[6:].split(',')
@@ -114,17 +117,22 @@ for arg in sys.argv[1:]:
         beta = float(arg[6:])
     elif arg.startswith('-target='):
         target = float(arg[8:])
+    elif arg.startswith('-tenplot'):
+        tenplot = True
+    elif arg.startswith('-time=')
+        start = arg[6:].split(',')[0]
+        stop = arg[6:].split(',')[1]
     else:
         print('Unknown argument: ' + arg)
 
 ### Pipeline steps to run -----------------------------------------------------
 
-steps = {'prepare_directories' :        True,
-         'compute_source_space' :       True,
+steps = {'prepare_directories' :        False,
+         'compute_source_space' :       False,
          'restrict_src_to_label' :      False,
-         'calculate_bem_solution' :     True,
-         'calculate_forward_solution' : True,
-         'compute_covariance_matrix' :  True,
+         'calculate_bem_solution' :     False,
+         'calculate_forward_solution' : False,
+         'compute_covariance_matrix' :  False,
          'estimate_source_timecourse' : True,
          'morph_to_fsaverage' :         True,
          'average_stcs_source_space' :  True,
@@ -210,8 +218,18 @@ if steps['estimate_source_timecourse']:
 
     # Solve the inverse problem for each stimulus
     for stim in stimuli:
+        print("Solving for stimulus " + stim)
+        stim_idx = int("".join([i for i in stim if i in "1234567890"])) - 1
+        evokeds = [ev.crop(start, stop) for ev in evokeds[stim_idx]]
+
         if stim in bilaterals:
             target *= 2
+
+        if tenplot == True:
+            reMTW.reMTW_tenplot_a(fwds, evokeds, noise_covs, stim, project_dir)
+            reMTW.reMTW_tenplot_b(fwds, evokeds, noise_covs, stim, project_dir)
+            continue
+
         solvers.group_inversion(subjects, project_dir, src_spacing, stc_method,
                                 task, stim, fwds, evokeds, noise_covs, target,
                                 overwrite, alpha = alpha, beta = beta)

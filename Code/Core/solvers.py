@@ -47,11 +47,6 @@ def group_inversion(subjects, project_dir, src_spacing, stc_method, task, stim, 
     None.
     '''
 
-    print("Solving for stimulus " + stim)
-    stim_idx = int("".join([i for i in stim if i in "1234567890"])) - 1
-    evokeds = [ev.crop(0.08,0.08) for ev in evokeds[stim_idx]]
-    print("Stimulus ID (sector - 1): " + str(stim_idx))
-
     # Check that stcs for all stimuli have been calculated and saved
     missing = False
     for subject in subjects:
@@ -74,8 +69,6 @@ def group_inversion(subjects, project_dir, src_spacing, stc_method, task, stim, 
             solver_kwargs['epsilon'] = 5. / fwds[0]['sol']['data'].shape[-1]
         if 'gamma' not in solver_kwargs:
             solver_kwargs['gamma'] = 1
-        if target == None:
-            target = 3
 
         # Find 0.5 * alpha_max, where alpha_max spreads activation everywhere
         if 'alpha' not in solver_kwargs or solver_kwargs['alpha'] == None:
@@ -88,11 +81,24 @@ def group_inversion(subjects, project_dir, src_spacing, stc_method, task, stim, 
         if 'beta' not in solver_kwargs or solver_kwargs['beta'] == None:
             print('Finding optimal beta for ' + stim)
             stcs, _ = reMTW_find_beta(fwds, evokeds, noise_covs, stim, project_dir,
-                                         target, solver_kwargs)
+                                      target, solver_kwargs)
         
         # Everything has been set beforehand, just run the inversion
         else:
-            stcs, _ = reMTW_wrapper(fwds, evokeds, noise_covs, solver_kwargs)
+            # Try 5 times to get a solid estimate, if fails 5 times return without
+            # writing stcs to file.
+            for i in range(5):
+                try:
+                    stcs, _ = reMTW_wrapper(fwds, evokeds, noise_covs, solver_kwargs)
+                    break
+                except ValueError as e:
+                    print("Beta=" + str(solver_kwargs['beta']) + " caused an error (skipping):")
+                    print(e)
+                    print('Reducing beta by 0.01...\n')
+                    solver_kwargs['beta'] -= 0.01
+                    if i == 4:
+                        print('Failed to acquire stcs. No stcs saved.')
+                        return
 
     # Save the returned source time course estimates to disk
     print(stcs)

@@ -55,7 +55,7 @@ def reMTW_wrapper(fwds, evokeds, noise_covs, solver_kwargs):
 
     return (stcs, avg)
 
-def reMTW_param_plot(log, project_dir, param, stim):
+def reMTW_param_plot(log, project_dir, param, stim, fname_id = ""):
     '''
     Plot active source points vs. alpha or beta.
 
@@ -69,6 +69,8 @@ def reMTW_param_plot(log, project_dir, param, stim):
         Plotted parameter, e.g. 'alpha'.
     stim : str
         Stimulus name, e.g. 'sector21'.
+    fname_id : str
+        Additional string to append to the filename. Default is "".
     
     Returns
     ----------
@@ -88,7 +90,7 @@ def reMTW_param_plot(log, project_dir, param, stim):
     ax.get_yaxis().set_major_formatter(ScalarFormatter())
 
     # Save
-    plt.savefig(project_dir + 'Data/plot/' + param + '_' + stim + '.png')
+    plt.savefig(project_dir + 'Data/plot/' + param + '_' + stim + fname_id + '.png')
     plt.close()
 
 def reMTW_save_params(project_dir, param_name, param_list, actives, sec_name,
@@ -118,14 +120,13 @@ def reMTW_save_params(project_dir, param_name, param_list, actives, sec_name,
     '''
 
     with open(project_dir + 'Data/plot/' + stim + '.txt', 'a') as f:
-        if param_name == 'alpha':
-            f.write(datetime.now().strftime("%D.%M.%Y %H:%M:%S") + '\n')
+        f.write(datetime.now().strftime("%D.%M.%Y %H:%M:%S") + '\n')
         f.write(param_name + ' with ' + sec_name + '=' + str(sec_value) + ':\n')
         f.write(', '.join([str(value) for value in param_list]) + '\n')
         f.write('Active source points with given parameters:\n')
         f.write(', '.join([str(value) for value in actives]) + '\n')
         if param_name == 'beta':
-            f.write('\n-----\n')
+            f.write('\n-----\n\n')
 
 def reMTW_search_step(current, log, history, param):
     '''
@@ -203,8 +204,8 @@ def reMTW_find_alpha(fwds, evokeds, noise_covs, stim, project_dir, solver_kwargs
         solver_kwargs['beta'] = 0.7
 
     history = []
-    # Find alpha with 6 iterations
-    for i in range(6):
+    # Find alpha with 7 iterations
+    for i in range(7):
         try:
             print("Solving for alpha=" + str(solver_kwargs['alpha']))
             _, avg = reMTW_wrapper(fwds, evokeds, noise_covs, solver_kwargs)
@@ -339,3 +340,81 @@ def reMTW_find_beta(fwds, evokeds, noise_covs, stim, project_dir, target,
 
     print("Got beta_=" + str(beta_))
     return (stcs_, beta_)
+
+def reMTW_tenplot_a(fwds, evokeds, noise_covs, stim, project_dir):
+
+    print("Solving for stimulus " + stim)
+    stim_idx = int("".join([i for i in stim if i in "1234567890"])) - 1
+    evokeds = [ev.crop(0.08,0.08) for ev in evokeds[stim_idx]]
+    print("Stimulus ID (sector - 1): " + str(stim_idx))
+
+    log = dict(alphas = [], actives = [])
+    
+    solver_kwargs = dict(beta=0.3, alpha=1)
+    solver_kwargs['epsilon'] = 5. / fwds[0]['sol']['data'].shape[-1]
+    solver_kwargs['gamma'] = 1
+    #solver_kwargs['concomitant'] = False
+
+    alphas = np.linspace(0,25,11)
+    alphas[0] = 1
+
+    # Test alpha at 11 points
+    for a in alphas:
+        solver_kwargs['alpha'] = a
+        try:
+            print("Solving for alpha=" + str(solver_kwargs['alpha']))
+            _, avg = reMTW_wrapper(fwds, evokeds, noise_covs, solver_kwargs)
+            print("Got " + str(avg) + " active sources with alpha=" + str(solver_kwargs['alpha']))
+        except ValueError as e:
+            print("Alpha=" + str(solver_kwargs['alpha']) + " caused an error (skipping):")
+            print(e)
+            solver_kwargs['alpha'] += 1
+            continue
+
+        log['alphas'] += [solver_kwargs['alpha']]
+        log['actives'] += [avg]
+
+    log['actives'] = [avg for alpha, avg in sorted(zip(log['alphas'], log['actives']))]
+    log['alphas'].sort()
+
+    # Print the result, save log in a file and plot active points vs alphas
+    reMTW_param_plot(log, project_dir, 'alphas', stim, 'tenpoint')
+    reMTW_save_params(project_dir, 'alpha', log['alphas'], log['actives'], 'beta', solver_kwargs['beta'], stim)
+
+def reMTW_tenplot_b(fwds, evokeds, noise_covs, stim, project_dir, alpha = 7.5):
+
+    print("Solving for stimulus " + stim)
+    stim_idx = int("".join([i for i in stim if i in "1234567890"])) - 1
+    evokeds = [ev.crop(0.08,0.08) for ev in evokeds[stim_idx]]
+    print("Stimulus ID (sector - 1): " + str(stim_idx))
+
+    log = dict(betas = [], actives = [])
+    
+    solver_kwargs = dict(beta=0.3, alpha=alpha)
+    solver_kwargs['epsilon'] = 5. / fwds[0]['sol']['data'].shape[-1]
+    solver_kwargs['gamma'] = 1
+    #solver_kwargs['concomitant'] = False
+    betas = np.linspace(0.2,0.9,11)
+
+    # Test betas at 11 points
+    for b in betas:
+        solver_kwargs['beta'] = b
+        try:
+            print("Solving for beta=" + str(solver_kwargs['beta']))
+            _, avg = reMTW_wrapper(fwds, evokeds, noise_covs, solver_kwargs)
+            print("Got " + str(avg) + " active sources with beta=" + str(solver_kwargs['beta']))
+        except ValueError as e:
+            print("beta=" + str(solver_kwargs['beta']) + " caused an error (skipping):")
+            print(e)
+            solver_kwargs['beta'] += 0.05
+            continue
+
+        log['betas'] += [solver_kwargs['beta']]
+        log['actives'] += [avg]
+
+    log['actives'] = [avg for beta, avg in sorted(zip(log['betas'], log['actives']))]
+    log['betas'].sort()
+
+    # Print the result, save log in a file and plot active points vs alphas
+    reMTW_param_plot(log, project_dir, 'betas', stim, 'tenpoint')
+    reMTW_save_params(project_dir, 'beta', log['betas'], log['actives'], 'alpha', solver_kwargs['alpha'], stim)
