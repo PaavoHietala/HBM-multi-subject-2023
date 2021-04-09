@@ -120,8 +120,12 @@ for arg in sys.argv[1:]:
     elif arg.startswith('-tenplot'):
         tenplot = True
     elif arg.startswith('-time='):
-        start = float(arg[6:].split(',')[0])
-        stop = float(arg[6:].split(',')[1])
+        times = arg[6:].split(',')
+        start = float(times[0])
+        if len(times) > 1:
+            stop = float(times[1])
+        else:
+            stop = start
     else:
         print('Unknown argument: ' + arg)
 
