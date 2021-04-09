@@ -71,6 +71,10 @@ colors = ['mistyrose', 'plum', 'thistle', 'lightsteelblue', 'lightcyan', 'lightg
           'aqua', 'mediumspringgreen', 'khaki', 'navajowhite', 'red', 'purple',
           'blueviolet', 'blue', 'turquoise', 'lime', 'yellow', 'orange']
 
+# List of stimuli that should show response on both hemispheres:
+
+bilaterals = ['sector3', 'sector7', 'sector11', 'sector15', 'sector19', 'sector23']
+
 # Overwrite existing files
 
 overwrite = True
@@ -81,14 +85,14 @@ overwrite = True
 steps = {'prepare_directories' :        False,
          'compute_source_space' :       False,
          'calculate_bem_solution' :     False,
-         'calculate_forward_solution' : True,
-         'compute_covariance_matrix' :  True,
-         'construct_inverse_operator' : True,
-         'estimate_source_timecourse' : True,
-         'morph_to_fsaverage' :         True,
-         'average_stcs_source_space' :  True,
+         'calculate_forward_solution' : False,
+         'compute_covariance_matrix' :  False,
+         'construct_inverse_operator' : False,
+         'estimate_source_timecourse' : False,
+         'morph_to_fsaverage' :         False,
+         'average_stcs_source_space' :  False,
          'label_peaks' :                False,
-         'expand_peak_labels' :         False,
+         'expand_peak_labels' :         True,
          'label_all_vertices' :         False}
 
 
@@ -157,7 +161,8 @@ if steps['label_peaks']:
 # Select peaks from all averaged stimuli, grow them 7mm and plot on lh + rh
 if steps['expand_peak_labels']:
     visualize.expand_peak_labels(subjects, project_dir, src_spacing, stc_method,
-                                 task, stimuli, colors, overwrite)
+                                 task, stimuli, colors, overwrite,
+                                 bilaterals = bilaterals)
 
 # Label each vertex based on normalized stimulus data and plot on lh + rh
 if steps['label_all_vertices']:

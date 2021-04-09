@@ -69,7 +69,7 @@ def label_peaks(subjects, project_dir, src_spacing, stc_method, task, stimuli,
         brain.add_label(lpath + '-lh.label', color = colors[c_idx], reset_camera = False)
     
 def expand_peak_labels(subjects, project_dir, src_spacing, stc_method, task,
-                       stimuli, colors, overwrite):
+                       stimuli, colors, overwrite, bilaterals = []):
     '''
     Create labels for peaks activation locations for each hemisphere and
     visualize the results.
@@ -92,6 +92,9 @@ def expand_peak_labels(subjects, project_dir, src_spacing, stc_method, task,
         List of matplotlib colors for stimuli in the same order as stimuli.
     overwrite : bool, optional
         Overwrite existing files switch. The default is False.
+    bilaterals: list of str
+        List of bilateral stimuli (on midline); label peaks on both hemis.
+        Default is an empty list [].
 
     Returns
     -------
@@ -105,9 +108,12 @@ def expand_peak_labels(subjects, project_dir, src_spacing, stc_method, task,
     
     peaks = []
     peak_hemis = []
+
+    # Duplicate color values for bilateral stimuli
+    bilateral_idx = [stimuli.index(stim) for stim in bilaterals]
+    [colors.insert(i, colors[i]) for i in bilateral_idx[::-1]]
     colors_rgb = np.array([to_rgba(c) for c in colors])
-    
-    
+
     # Find peaks for each averaged stimulus stc
     for stim in stimuli:
         fname = get_fname('fsaverage', 'stc', stc_method = stc_method, 
@@ -115,13 +121,24 @@ def expand_peak_labels(subjects, project_dir, src_spacing, stc_method, task,
         fpath = os.path.join(project_dir, 'Data', 'avg', fname)
         stc = mne.read_source_estimate(fpath)
         
-        if np.max(stc.lh_data) > np.max(stc.rh_data):
-            hemi = 'lh'
+        if stim not in bilaterals:
+            # Not bilateral; get global peak and store it in peaks and hemis
+            if np.max(stc.lh_data) > np.max(stc.rh_data):
+                hemi = 'lh'
+            else:
+                hemi = 'rh'
+            peaks.append(stc.get_peak(hemi = hemi)[0])
+            peak_hemis.append(hemi)
         else:
-            hemi = 'rh'
-        
-        peaks.append(stc.get_peak(hemi = hemi)[0])
-        peak_hemis.append(hemi)
+            # Bilateral; get both lh and rh peaks and store them
+            peaks.append(stc.get_peak(hemi = 'lh')[0])
+            peaks.append(stc.get_peak(hemi = 'rh')[0])
+            peak_hemis += ['lh', 'rh']
+    
+    # Update stimulus list to accomodate for bilateral peaks so the lists can
+    # be index-matched
+
+    [stimuli.insert(i, stimuli[i]) for i in bilateral_idx[::-1]]
     
     # Remove duplicate peaks, because they are indistinguishable
     for hemi in ['lh', 'rh']:
@@ -129,14 +146,12 @@ def expand_peak_labels(subjects, project_dir, src_spacing, stc_method, task,
         while True:
             if i == len(peaks) - 1:
                 break
-            elif peak_hemis[i] != hemi:
-                i += 1
-                continue
-            elif peaks.count(peaks[i]) == 1:
+            elif peak_hemis[i] != hemi or peaks.count(peaks[i]) == 1:
                 i += 1
                 continue
             
-            # Iterate over indices of duplicate values backwards, skip first occurance
+            # Iterate over indices of duplicate values backwards, while removing
+            # duplicate peaks from all lists, skip first occurance to leave one.
             for dup_idx in [j for j, peak in enumerate(peaks) if peak == peaks[i]][:0:-1]:
                 print(stimuli[i] + ' and ' + stimuli[dup_idx]
                       + ' have the same seed on hemi ' + peak_hemis[dup_idx])
@@ -157,8 +172,8 @@ def expand_peak_labels(subjects, project_dir, src_spacing, stc_method, task,
             stimuli_.append(stimuli[hemi_idx])
         
         print('Growing ' + hemi + ' labels...')
-        labels_ =  mne.grow_labels('fsaverage', peaks_, [7] * len(peaks_), [hemi_id] * len(peaks_),
-                                   overlap = False, names = stimuli_, colors = colors_)
+        labels_ =  mne.grow_labels('fsaverage', peaks_, [5] * len(peaks_), [hemi_id] * len(peaks_),
+                                   overlap = True, names = stimuli_, colors = colors_)
 
         print('Adding labels to ' + hemi + ' brain...')
         for label in labels_:
@@ -166,6 +181,14 @@ def expand_peak_labels(subjects, project_dir, src_spacing, stc_method, task,
                 brain_lh.add_label(label, alpha = 1, reset_camera = False)
             else:
                 brain_rh.add_label(label, alpha = 1, reset_camera = False)
+
+    # Label V1 on the cortex
+    v1_lh = mne.read_label('/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/'
+                           + 'fsaverage' + '/label/lh.V1_exvivo.label', 'fsaverage')
+    brain_lh.add_label(v1_lh, borders = 2)
+    v1_rh = mne.read_label('/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/'
+                           + 'fsaverage' + '/label/rh.V1_exvivo.label', 'fsaverage')
+    brain_rh.add_label(v1_rh, borders = 2)
 
     print('Done')
     brain_lh.show()

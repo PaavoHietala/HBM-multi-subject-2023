@@ -44,7 +44,7 @@ subjects = ['MEGCI_S' + str(idx) for idx in list(range(1,10)) if idx not in excl
 
 # Source point spacing for source space calculation
 
-src_spacing = 'ico4'
+src_spacing = 'oct6'
 
 # Which BEM model to use for forward solution, <subject name> + <bem_suffix>.fif
 
@@ -60,7 +60,7 @@ task = 'f'
 
 # Which stimuli to analyze, sectors 1-24 available
 
-stimuli = ['sector' + str(num) for num in range(12,13)]
+stimuli = ['sector' + str(num) for num in range(1,25)]
 
 # List of raw rest files for covariance matrix and extracting sensor info
 
@@ -119,9 +119,9 @@ for arg in sys.argv[1:]:
         target = float(arg[8:])
     elif arg.startswith('-tenplot'):
         tenplot = True
-    elif arg.startswith('-time=')
-        start = arg[6:].split(',')[0]
-        stop = arg[6:].split(',')[1]
+    elif arg.startswith('-time='):
+        start = float(arg[6:].split(',')[0])
+        stop = float(arg[6:].split(',')[1])
     else:
         print('Unknown argument: ' + arg)
 
@@ -222,6 +222,9 @@ if steps['estimate_source_timecourse']:
         stim_idx = int("".join([i for i in stim if i in "1234567890"])) - 1
         evokeds = [ev.crop(start, stop) for ev in evokeds[stim_idx]]
 
+        info = '-'.join([src_spacing, "subjects=" + str(len(subjects)), task, stim,
+                        "target=" + str(target)])
+
         if stim in bilaterals:
             target *= 2
 
@@ -232,7 +235,7 @@ if steps['estimate_source_timecourse']:
 
         solvers.group_inversion(subjects, project_dir, src_spacing, stc_method,
                                 task, stim, fwds, evokeds, noise_covs, target,
-                                overwrite, alpha = alpha, beta = beta)
+                                overwrite, alpha = alpha, beta = beta, info = info)
 
 # Morph subject data to fsaverage
 if steps['morph_to_fsaverage']:
@@ -255,7 +258,8 @@ if steps['label_peaks']:
 # Select peaks from all averaged stimuli, grow them 7mm and plot on lh + rh
 if steps['expand_peak_labels']:
     visualize.expand_peak_labels(subjects, project_dir, src_spacing, stc_method,
-                                 task, stimuli, colors, overwrite)
+                                 task, stimuli, colors, overwrite,
+                                 bilaterals = bilaterals)
 
 # Label each vertex based on normalized stimulus data and plot on lh + rh
 if steps['label_all_vertices']:

@@ -94,7 +94,7 @@ def reMTW_param_plot(log, project_dir, param, stim, fname_id = ""):
     plt.close()
 
 def reMTW_save_params(project_dir, param_name, param_list, actives, sec_name,
-                      sec_value, stim):
+                      sec_value, stim, info = ''):
     '''Save parameter log into a text file.
 
     Parameters
@@ -113,6 +113,8 @@ def reMTW_save_params(project_dir, param_name, param_list, actives, sec_name,
         Value of the secondary parameter.
     stim : str
         Name of the stimulus these values were acquired for.
+    info : str
+        Additional info string to differentiate the log inputs. Default is ''.
     
     Returns
     -------
@@ -120,13 +122,12 @@ def reMTW_save_params(project_dir, param_name, param_list, actives, sec_name,
     '''
 
     with open(project_dir + 'Data/plot/' + stim + '.txt', 'a') as f:
-        f.write(datetime.now().strftime("%D.%M.%Y %H:%M:%S") + '\n')
+        f.write(datetime.now().strftime("%D.%M.%Y %H:%M:%S") + " " + info + '\n')
         f.write(param_name + ' with ' + sec_name + '=' + str(sec_value) + ':\n')
         f.write(', '.join([str(value) for value in param_list]) + '\n')
         f.write('Active source points with given parameters:\n')
         f.write(', '.join([str(value) for value in actives]) + '\n')
-        if param_name == 'beta':
-            f.write('\n-----\n\n')
+        f.write('\n-----\n\n')
 
 def reMTW_search_step(current, log, history, param):
     '''
@@ -168,7 +169,8 @@ def reMTW_search_step(current, log, history, param):
         # Optimum was not between the point index [0, -1] -> it's between [0, -2]
         return (log[-1] + log[-3]) / 2
 
-def reMTW_find_alpha(fwds, evokeds, noise_covs, stim, project_dir, solver_kwargs):
+def reMTW_find_alpha(fwds, evokeds, noise_covs, stim, project_dir, solver_kwargs,
+                     info = ''):
     '''
     Find alpha_max where the source estimate covers the whole cortex, a heuristic
     for optimal alpha is alpha_max / 2.
@@ -187,6 +189,8 @@ def reMTW_find_alpha(fwds, evokeds, noise_covs, stim, project_dir, solver_kwargs
         Base directory of the project.
     solver_kwargs : dict
         Additional parameters sent to the solver.
+    info : str
+        Additional info string to differentiate the log inputs. Default is ''.
 
     Returns
     -------
@@ -245,13 +249,14 @@ def reMTW_find_alpha(fwds, evokeds, noise_covs, stim, project_dir, solver_kwargs
     # Print the result, save log in a file and plot active points vs alphas
     print("Got aMax=" + str(aMax))
     reMTW_param_plot(log, project_dir, 'alphas', stim)
-    reMTW_save_params(project_dir, 'alpha', log['alphas'], log['actives'], 'beta', solver_kwargs['beta'], stim)
+    reMTW_save_params(project_dir, 'alpha', log['alphas'], log['actives'], 'beta',
+                      solver_kwargs['beta'], stim, info)
 
     # Good heuristic for alpha is 0.5 * aMax
     return 0.5 * aMax
 
 def reMTW_find_beta(fwds, evokeds, noise_covs, stim, project_dir, target,
-                    solver_kwargs):
+                    solver_kwargs, info = ''):
     '''
     Find beta where number of active source points is as close to the target
     as possible.
@@ -272,6 +277,8 @@ def reMTW_find_beta(fwds, evokeds, noise_covs, stim, project_dir, target,
         Target count of active source points.
     solver_kwargs : dict
         Additional parameters sent to the solver.
+    info : str
+        Additional info string to differentiate the log inputs. Default is ''.
 
     Returns
     -------
@@ -336,24 +343,20 @@ def reMTW_find_beta(fwds, evokeds, noise_covs, stim, project_dir, target,
     log['actives'] = [avg for alpha, avg in sorted(zip(log['betas'], log['actives']))]
     log['betas'].sort()
     reMTW_param_plot(log, project_dir, 'betas', stim)
-    reMTW_save_params(project_dir, 'beta', log['betas'], log['actives'], 'alpha', solver_kwargs['alpha'], stim)
+    reMTW_save_params(project_dir, 'beta', log['betas'], log['actives'], 'alpha',
+                      solver_kwargs['alpha'], stim, info)
 
     print("Got beta_=" + str(beta_))
     return (stcs_, beta_)
 
 def reMTW_tenplot_a(fwds, evokeds, noise_covs, stim, project_dir):
 
-    print("Solving for stimulus " + stim)
-    stim_idx = int("".join([i for i in stim if i in "1234567890"])) - 1
-    evokeds = [ev.crop(0.08,0.08) for ev in evokeds[stim_idx]]
-    print("Stimulus ID (sector - 1): " + str(stim_idx))
-
     log = dict(alphas = [], actives = [])
     
     solver_kwargs = dict(beta=0.3, alpha=1)
     solver_kwargs['epsilon'] = 5. / fwds[0]['sol']['data'].shape[-1]
     solver_kwargs['gamma'] = 1
-    #solver_kwargs['concomitant'] = False
+    solver_kwargs['concomitant'] = False
 
     alphas = np.linspace(0,25,11)
     alphas[0] = 1
@@ -383,17 +386,12 @@ def reMTW_tenplot_a(fwds, evokeds, noise_covs, stim, project_dir):
 
 def reMTW_tenplot_b(fwds, evokeds, noise_covs, stim, project_dir, alpha = 7.5):
 
-    print("Solving for stimulus " + stim)
-    stim_idx = int("".join([i for i in stim if i in "1234567890"])) - 1
-    evokeds = [ev.crop(0.08,0.08) for ev in evokeds[stim_idx]]
-    print("Stimulus ID (sector - 1): " + str(stim_idx))
-
     log = dict(betas = [], actives = [])
     
     solver_kwargs = dict(beta=0.3, alpha=alpha)
     solver_kwargs['epsilon'] = 5. / fwds[0]['sol']['data'].shape[-1]
     solver_kwargs['gamma'] = 1
-    #solver_kwargs['concomitant'] = False
+    solver_kwargs['concomitant'] = False
     betas = np.linspace(0.2,0.9,11)
 
     # Test betas at 11 points

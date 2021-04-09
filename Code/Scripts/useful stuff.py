@@ -12,7 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 # Dirty hack to get the relative import from same dir to work
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-from MNE_operations import mne_operations as mne_op
+from Core import mne_common as mne_op
 import groupmne
 
 #%%
@@ -26,14 +26,14 @@ b = stc.plot('MEGCI_S12', 'inflated','lh')
 b.show_view({'elevation' : 100, 'azimuth' : -55}, distance = 500)
 # b.show()
 
-#%% plot
+#%% Iterate over all stimuli and plot lh and rh
 subject = 'fsaverage'
 method = 'remtw'
 stim = 'sector24'
 hemi = 'lh'
 # stc = mne.read_source_estimate('/m/nbe/scratch/megci/MFinverse/reMTW/Data/stc/'+subject+'-ico4-'+method+'-f-'+stim+'-'+hemi+'.stc')
 
-for i in range(1,25):
+for i in range(12,13):
     stim = 'sector' + str(i)
     stc = mne.read_source_estimate('/m/nbe/scratch/megci/MFinverse/reMTW/Data/avg/'+subject+'-ico4-'+method+'-f-'+stim+'-'+hemi+'.stc')
 
@@ -55,8 +55,8 @@ for i in range(1,25):
             v1_rh = mne.read_label('/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/'+subject+'/label/rh.V1_exvivo.label', subject)
             b.add_label(v1_rh, borders = 2)
             b.show_view({'elevation' : 100, 'azimuth' : -125}, distance = 500)
-        b.save_image('/m/nbe/scratch/megci/MFinverse/reMTW/Data/plot/' + '_'.join([subject, method, stim, hemi]) + '.jpg')
-        b.close()
+        #b.save_image('/m/nbe/scratch/megci/MFinverse/reMTW/Data/plot/' + '_'.join([subject, method, stim, hemi]) + '.jpg')
+        #b.close()
 #%% get lambda_max
 project_dir = '/m/nbe/scratch/megci/MFinverse/reMTW/'
 subject = 'MEGCI_S1'

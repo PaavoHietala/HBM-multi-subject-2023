@@ -2,4 +2,9 @@ Evoked_mne
 forward_solutions
 *.pyc
 *.pyo
+*.fif
 Data
+neuroimage-multi-subject-2020
+groupmne tutorial
+Code/groupmne
+.vscode

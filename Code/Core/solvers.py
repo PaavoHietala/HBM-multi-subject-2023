@@ -14,7 +14,7 @@ from .reMTW import reMTW_find_alpha, reMTW_find_beta, reMTW_wrapper
 from .utils import get_fname
 
 def group_inversion(subjects, project_dir, src_spacing, stc_method, task, stim, fwds,
-                    evokeds, noise_covs, target, overwrite, **solver_kwargs):
+                    evokeds, noise_covs, target, overwrite, info = '', **solver_kwargs):
     '''Wrapper for the different groupmne solvers.
 
     Parameters
@@ -41,6 +41,10 @@ def group_inversion(subjects, project_dir, src_spacing, stc_method, task, stim, 
         Target count of average active source points.
     overwrite : Bool
         Whether or not overwrite existing source estimates.
+    info : str
+        Additional info string to differentiate the log inputs. Default is ''.
+    solver_kwargs : kwargs
+        Additional parameters to be passed on to the underlying solver.
 
     Returns
     ----------
@@ -74,14 +78,14 @@ def group_inversion(subjects, project_dir, src_spacing, stc_method, task, stim, 
         if 'alpha' not in solver_kwargs or solver_kwargs['alpha'] == None:
             print('Finding optimal alpha for ' + stim)
             alpha = reMTW_find_alpha(fwds, evokeds, noise_covs, stim, project_dir,
-                                     copy.deepcopy(solver_kwargs))
+                                     copy.deepcopy(solver_kwargs), info = info)
             solver_kwargs['alpha'] = alpha
         
         # Find beta which produces exactly <target> active source points
         if 'beta' not in solver_kwargs or solver_kwargs['beta'] == None:
             print('Finding optimal beta for ' + stim)
             stcs, _ = reMTW_find_beta(fwds, evokeds, noise_covs, stim, project_dir,
-                                      target, solver_kwargs)
+                                      target, solver_kwargs, info = info)
         
         # Everything has been set beforehand, just run the inversion
         else:
