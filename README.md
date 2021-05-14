@@ -29,7 +29,7 @@ https://github.com/mne-tools/mne-python/issues/8848
 
 You might have to load the relevant GPU libraries on Triton with\
 `ml anaconda3/2019.11-gpu` and\
-`ml cuda/10`\
+`ml cuda/10`
 
 On VDI\
 `ml anaconda3/2019.08.19-gpu`

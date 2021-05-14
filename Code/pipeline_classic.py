@@ -27,11 +27,11 @@ mne.set_config('SUBJECTS_DIR', subjects_dir)
 # List of subject names
 
 exclude = [5, 8, 13, 15]
-subjects = ['MEGCI_S' + str(idx) for idx in list(range(11,25)) if idx not in exclude]
+subjects = ['MEGCI_S' + str(idx) for idx in list(range(22,25)) if idx not in exclude]
 
 # Source point spacing for source space calculation
 
-src_spacing = 'oct6'
+src_spacing = 'ico4'
 
 # Which BEM model to use for forward solution, <subject name> + <bem_suffix>.fif
 
@@ -39,7 +39,7 @@ bem_suffix = '-1-shell-bem-sol'
 
 # Which inversion method to use for source activity estimate
 
-stc_method = 'dSPM'
+stc_method = 'eLORETA'
 
 # Which task is currently investigated
 
@@ -82,17 +82,17 @@ overwrite = True
 ### Pipeline steps to run -----------------------------------------------------
 
 
-steps = {'prepare_directories' :        False,
-         'compute_source_space' :       False,
+steps = {'prepare_directories' :        True,
+         'compute_source_space' :       True,
          'calculate_bem_solution' :     False,
-         'calculate_forward_solution' : False,
+         'calculate_forward_solution' : True,
          'compute_covariance_matrix' :  False,
-         'construct_inverse_operator' : False,
-         'estimate_source_timecourse' : False,
-         'morph_to_fsaverage' :         False,
+         'construct_inverse_operator' : True,
+         'estimate_source_timecourse' : True,
+         'morph_to_fsaverage' :         True,
          'average_stcs_source_space' :  False,
          'label_peaks' :                False,
-         'expand_peak_labels' :         True,
+         'expand_peak_labels' :         False,
          'label_all_vertices' :         False}
 
 
@@ -102,13 +102,18 @@ steps = {'prepare_directories' :        False,
 if steps['prepare_directories']:
     utils.prepare_directories(project_dir)
 
+# Compute source space for fsaverage before subjects
+if steps['compute_source_space']:
+    mne_common.compute_source_space('fsaverage', project_dir, src_spacing, overwrite,
+                                    add_dist = True)
+
 # Following steps are run on per-subject basis
 for idx, subject in enumerate(subjects):
-    print(subject)
     
     # Compute source spaces for subjects and save them in ../Data/src/
     if steps['compute_source_space']:
-        mne_common.compute_source_space(subject, project_dir, src_spacing, overwrite)
+        mne_common.compute_source_space(subject, project_dir, src_spacing, overwrite,
+                                        morph = True, add_dist = True)
     
     # Setup forward model based on FreeSurfer BEM surfaces
     if steps['calculate_bem_solution']:

@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Fri Feb  5 17:55:31 2021
+Created on Fri Feb 5 17:55:31 2021
+
+A collection of poorly documented code blocks used for intermediate plots etc.
 
 @author: hietalp2
 """
@@ -17,9 +19,9 @@ import groupmne
 
 #%%
 
-stc = mne.read_source_estimate('/m/nbe/scratch/megci/MFinverse/Classic/Data/stc/MEGCI_S12-oct6-eLORETA-f-sector14-lh.stc')
+stc = mne.read_source_estimate('/m/nbe/scratch/megci/MFinverse/Classic/Data/stc/MEGCI_S24-ico4-eLORETA-f-sector21-lh.stc')
 
-b = stc.plot('MEGCI_S12', 'inflated','lh')
+b = stc.plot('MEGCI_S24', 'inflated','lh')
 
 # b = mne.viz.Brain('MEGCI_S1', 'lh', 'inflated', show = False)
 # b.add_data(stc)
@@ -27,15 +29,17 @@ b.show_view({'elevation' : 100, 'azimuth' : -55}, distance = 500)
 # b.show()
 
 #%% Iterate over all stimuli and plot lh and rh
-subject = 'fsaverage'
-method = 'remtw'
-stim = 'sector24'
+subject = 'MEGCI_S24'
+method = 'eLORETA'
+stim = 'sector8'
 hemi = 'lh'
+spacing = 'ico4'
+basedir = '/m/nbe/scratch/megci/MFinverse/Classic/Data/'
 # stc = mne.read_source_estimate('/m/nbe/scratch/megci/MFinverse/reMTW/Data/stc/'+subject+'-ico4-'+method+'-f-'+stim+'-'+hemi+'.stc')
 
-for i in range(12,13):
+for i in range(21,22):
     stim = 'sector' + str(i)
-    stc = mne.read_source_estimate('/m/nbe/scratch/megci/MFinverse/reMTW/Data/avg/'+subject+'-ico4-'+method+'-f-'+stim+'-'+hemi+'.stc')
+    stc = mne.read_source_estimate(basedir + 'stc/' + '-'.join([subject, spacing, method, 'f', stim, hemi]) +'.stc')
 
     if np.count_nonzero(stc.data[:]) == 0:
         print("Zero estimate")
@@ -55,7 +59,7 @@ for i in range(12,13):
             v1_rh = mne.read_label('/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/'+subject+'/label/rh.V1_exvivo.label', subject)
             b.add_label(v1_rh, borders = 2)
             b.show_view({'elevation' : 100, 'azimuth' : -125}, distance = 500)
-        #b.save_image('/m/nbe/scratch/megci/MFinverse/reMTW/Data/plot/' + '_'.join([subject, method, stim, hemi]) + '.jpg')
+        #b.save_image(basedir + 'plot/' + '_'.join([subject, method, stim, hemi]) + '.jpg')
         #b.close()
 #%% get lambda_max
 project_dir = '/m/nbe/scratch/megci/MFinverse/reMTW/'

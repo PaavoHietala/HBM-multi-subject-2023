@@ -26,7 +26,7 @@ from mutar.utils import  groundmetric
 print(datetime.now().strftime("%D.%M.%Y %H:%M:%S"),
       "Started pipeline_reMTW with parameters", sys.argv[1:])
 
-### Parameters ----------------------------------------------------------------
+### Parameters -----------------------------------------------------------------
 
 # Root data directory of the project
 
@@ -40,11 +40,11 @@ mne.set_config('SUBJECTS_DIR', subjects_dir)
 # List of subject names, subjects 1-24 available ex. those in exclude 
 
 exclude = [5, 8, 13, 15]
-subjects = ['MEGCI_S' + str(idx) for idx in list(range(1,10)) if idx not in exclude]
+subjects = ['MEGCI_S' + str(idx) for idx in list(range(1,25)) if idx not in exclude]
 
 # Source point spacing for source space calculation
 
-src_spacing = 'oct6'
+src_spacing = 'ico4'
 
 # Which BEM model to use for forward solution, <subject name> + <bem_suffix>.fif
 
@@ -60,7 +60,7 @@ task = 'f'
 
 # Which stimuli to analyze, sectors 1-24 available
 
-stimuli = ['sector' + str(num) for num in range(1,25)]
+stimuli = ['sector' + str(num) for num in range(8,9)]
 
 # List of raw rest files for covariance matrix and extracting sensor info
 
@@ -74,8 +74,8 @@ coreg_files = ['/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/' + subject +
 
 # List of evoked response files for source activity estimate
 
-evoked_files = [project_dir + 'Data/Evoked/' + subject + '_f-ave.fif' for
-                subject in subjects]
+evoked_files = ['/m/nbe/scratch/megci/MFinverse/reMTW/Data/Evoked/' + subject
+                + '_f-ave.fif' for subject in subjects]
 
 # List of colors for each stimulus label
 
@@ -96,6 +96,10 @@ bilaterals = ['sector3', 'sector7', 'sector11', 'sector15', 'sector19', 'sector2
 
 target = 3
 
+# An optional suffix to add to all filenames, not in use currently
+
+suffix = None
+
 # Check CLI arguments, override other settings
 
 alpha = None
@@ -104,6 +108,7 @@ target = 3
 tenplot = False
 start = 0.08
 stop = 0.08
+concomitant = False
 for arg in sys.argv[1:]:
     if arg.startswith('-stim='):
         stimuli = arg[6:].split(',')
@@ -126,26 +131,31 @@ for arg in sys.argv[1:]:
             stop = float(times[1])
         else:
             stop = start
+    elif arg.startswith('-suffix='):
+        suffix = arg[8:]
+    elif arg.startswith('-concomitant='):
+        concomitant = (True if arg[13:].lower() == "true" else False)
+    elif arg.startswith('-dir='):
+        project_dir = arg[5:]
     else:
         print('Unknown argument: ' + arg)
 
-### Pipeline steps to run -----------------------------------------------------
+### Pipeline steps to run ------------------------------------------------------
 
-steps = {'prepare_directories' :        False,
+steps = {'prepare_directories' :        True,
          'compute_source_space' :       False,
          'restrict_src_to_label' :      False,
          'calculate_bem_solution' :     False,
          'calculate_forward_solution' : False,
          'compute_covariance_matrix' :  False,
          'estimate_source_timecourse' : True,
-         'morph_to_fsaverage' :         True,
-         'average_stcs_source_space' :  True,
+         'morph_to_fsaverage' :         False,
+         'average_stcs_source_space' :  False,
          'label_peaks' :                False,
          'expand_peak_labels' :         False,
          'label_all_vertices' :         False}
 
-
-### Run the pipeline ----------------------------------------------------------
+### Run the pipeline -----------------------------------------------------------
 
 # Prepare all needed directories for the data
 if steps['prepare_directories']:
@@ -154,20 +164,22 @@ if steps['prepare_directories']:
 # Compute source space for fsaverage before subjects
 if steps['compute_source_space']:
     mne_common.compute_source_space('fsaverage', project_dir, src_spacing, overwrite,
-                                    add_dist = False)
+                                    add_dist = True)
 
+# Attempt to restrict source points to a label, doesn't work currently
 if steps['restrict_src_to_label']:
     labels = mne.read_labels_from_annot('fsaverage', 'aparc.a2009s')
     utils.restrict_src_to_label('fsaverage', project_dir, src_spacing, overwrite, labels)
 
 # Following steps are run on per-subject basis
 for idx, subject in enumerate(subjects):   
+
     # Compute source spaces for subjects and save them in ../Data/src/
     if steps['compute_source_space']:
         mne_common.compute_source_space(subject, project_dir, src_spacing, overwrite,
-                                        morph = True)
+                                        morph = True, add_dist = True)
     
-    # Setup forward model based on FreeSurfer BEM surfaces
+    # Calculate 1-shell and 3-shell BEM solutions using FreeSurfer BEM surfaces
     if steps['calculate_bem_solution']:
         mne_common.calculate_bem_solution(subject, project_dir, overwrite)
     
@@ -187,7 +199,7 @@ for idx, subject in enumerate(subjects):
 # Following steps are run on simulaneously for all subjects --------------------
 
 # Estimate source timecourses
-if steps['estimate_source_timecourse']:
+if steps['estimate_source_timecourse'] or tenplot == True:
     # Prepare list of evoked responses
     print("Loading evokeds")
     evokeds = []
@@ -233,13 +245,16 @@ if steps['estimate_source_timecourse']:
             target *= 2
 
         if tenplot == True:
-            reMTW.reMTW_tenplot_a(fwds, evokeds, noise_covs, stim, project_dir)
-            reMTW.reMTW_tenplot_b(fwds, evokeds, noise_covs, stim, project_dir)
+            #reMTW.reMTW_tenplot_a(fwds, evokeds, noise_covs, stim, project_dir,
+            #                      concomitant = concomitant, beta = beta)
+            reMTW.reMTW_tenplot_b(fwds, evokeds, noise_covs, stim, project_dir,
+                                  concomitant = concomitant, alpha = alpha)
             continue
 
         solvers.group_inversion(subjects, project_dir, src_spacing, stc_method,
                                 task, stim, fwds, evokeds, noise_covs, target,
-                                overwrite, alpha = alpha, beta = beta, info = info)
+                                overwrite, concomitant = concomitant, alpha = alpha,
+                                beta = beta, info = info)
 
 # Morph subject data to fsaverage
 if steps['morph_to_fsaverage']:

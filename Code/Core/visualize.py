@@ -105,6 +105,14 @@ def expand_peak_labels(subjects, project_dir, src_spacing, stc_method, task,
                              show = False)
     brain_rh = mne.viz.Brain('fsaverage', 'rh', 'inflated', title = 'fsaverage rh',
                              show = False)
+
+    # Label V1 on the cortex
+    v1_lh = mne.read_label('/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/'
+                           + 'fsaverage' + '/label/lh.V1_exvivo.label', 'fsaverage')
+    brain_lh.add_label(v1_lh, borders = 2)
+    v1_rh = mne.read_label('/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/'
+                           + 'fsaverage' + '/label/rh.V1_exvivo.label', 'fsaverage')
+    brain_rh.add_label(v1_rh, borders = 2)
     
     peaks = []
     peak_hemis = []
@@ -131,8 +139,8 @@ def expand_peak_labels(subjects, project_dir, src_spacing, stc_method, task,
             peak_hemis.append(hemi)
         else:
             # Bilateral; get both lh and rh peaks and store them
-            peaks.append(stc.get_peak(hemi = 'lh')[0])
-            peaks.append(stc.get_peak(hemi = 'rh')[0])
+            peaks.append(stc.in_label(v1_lh).get_peak(hemi = 'lh')[0])
+            peaks.append(stc.in_label(v1_rh).get_peak(hemi = 'rh')[0])
             peak_hemis += ['lh', 'rh']
     
     # Update stimulus list to accomodate for bilateral peaks so the lists can
@@ -172,7 +180,7 @@ def expand_peak_labels(subjects, project_dir, src_spacing, stc_method, task,
             stimuli_.append(stimuli[hemi_idx])
         
         print('Growing ' + hemi + ' labels...')
-        labels_ =  mne.grow_labels('fsaverage', peaks_, [5] * len(peaks_), [hemi_id] * len(peaks_),
+        labels_ =  mne.grow_labels('fsaverage', peaks_, [3] * len(peaks_), [hemi_id] * len(peaks_),
                                    overlap = True, names = stimuli_, colors = colors_)
 
         print('Adding labels to ' + hemi + ' brain...')
@@ -181,14 +189,6 @@ def expand_peak_labels(subjects, project_dir, src_spacing, stc_method, task,
                 brain_lh.add_label(label, alpha = 1, reset_camera = False)
             else:
                 brain_rh.add_label(label, alpha = 1, reset_camera = False)
-
-    # Label V1 on the cortex
-    v1_lh = mne.read_label('/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/'
-                           + 'fsaverage' + '/label/lh.V1_exvivo.label', 'fsaverage')
-    brain_lh.add_label(v1_lh, borders = 2)
-    v1_rh = mne.read_label('/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/'
-                           + 'fsaverage' + '/label/rh.V1_exvivo.label', 'fsaverage')
-    brain_rh.add_label(v1_rh, borders = 2)
 
     print('Done')
     brain_lh.show()

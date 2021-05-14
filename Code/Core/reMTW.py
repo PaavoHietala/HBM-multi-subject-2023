@@ -66,7 +66,7 @@ def reMTW_param_plot(log, project_dir, param, stim, fname_id = ""):
     project_dir : str
         Base directory of the project.
     param : str
-        Plotted parameter, e.g. 'alpha'.
+        Plotted parameter, either 'alpha' or 'beta'.
     stim : str
         Stimulus name, e.g. 'sector21'.
     fname_id : str
@@ -78,11 +78,14 @@ def reMTW_param_plot(log, project_dir, param, stim, fname_id = ""):
     '''
 
     plt.ioff()
+    plt.figure(figsize=(4,2.5))
     plt.plot(log[param], log['actives'], '--bo')
     plt.yscale('log')
-    plt.xlabel(param)
-    plt.ylabel('Average active sources')
-    plt.title(stim + ' ' + param)
+    plt.xlabel((r'$\mu$' if param == 'alpha' else r'$\lambda$'), fontsize=13)
+    plt.ylabel('AVG active sources', fontsize = 13)
+    #plt.title(stim + ' ' + param)
+    plt.tight_layout()
+    plt.grid()
 
     # Set yticks to discrete values
     ax = plt.gca()
@@ -205,13 +208,13 @@ def reMTW_find_alpha(fwds, evokeds, noise_covs, stim, project_dir, solver_kwargs
     if solver_kwargs['concomitant'] == False:
         solver_kwargs['beta'] = 0.3
     else:
-        solver_kwargs['beta'] = 0.7
+        solver_kwargs['beta'] = 0.2
 
     history = []
     # Find alpha with 7 iterations
     for i in range(7):
         try:
-            print("Solving for alpha=" + str(solver_kwargs['alpha']))
+            print("Solving for alpha=" + str(solver_kwargs['alpha']) + " with beta=" + str(solver_kwargs['beta']))
             _, avg = reMTW_wrapper(fwds, evokeds, noise_covs, solver_kwargs)
             print("Got " + str(avg) + " active sources with alpha=" + str(solver_kwargs['alpha']))
         except ValueError as e:
@@ -291,7 +294,11 @@ def reMTW_find_beta(fwds, evokeds, noise_covs, stim, project_dir, target,
     log = dict(betas = [], actives = [], stcs = [])
     
     # Set baseline parameters
-    solver_kwargs['beta'] = 0.4
+    if solver_kwargs['concomitant'] == False:
+        solver_kwargs['beta'] = 0.4
+    else:
+        solver_kwargs['beta'] = 0.2
+
     history = []
     avg = 0
     iter = 0
@@ -349,16 +356,17 @@ def reMTW_find_beta(fwds, evokeds, noise_covs, stim, project_dir, target,
     print("Got beta_=" + str(beta_))
     return (stcs_, beta_)
 
-def reMTW_tenplot_a(fwds, evokeds, noise_covs, stim, project_dir):
+def reMTW_tenplot_a(fwds, evokeds, noise_covs, stim, project_dir,
+                    concomitant = False, beta = 0.3):
 
     log = dict(alphas = [], actives = [])
     
-    solver_kwargs = dict(beta=0.3, alpha=1)
+    solver_kwargs = dict(beta = beta, alpha = 1)
     solver_kwargs['epsilon'] = 5. / fwds[0]['sol']['data'].shape[-1]
     solver_kwargs['gamma'] = 1
-    solver_kwargs['concomitant'] = False
+    solver_kwargs['concomitant'] = concomitant
 
-    alphas = np.linspace(0,25,11)
+    alphas = np.linspace(0,10,11)
     alphas[0] = 1
 
     # Test alpha at 11 points
@@ -384,15 +392,16 @@ def reMTW_tenplot_a(fwds, evokeds, noise_covs, stim, project_dir):
     reMTW_param_plot(log, project_dir, 'alphas', stim, 'tenpoint')
     reMTW_save_params(project_dir, 'alpha', log['alphas'], log['actives'], 'beta', solver_kwargs['beta'], stim)
 
-def reMTW_tenplot_b(fwds, evokeds, noise_covs, stim, project_dir, alpha = 7.5):
+def reMTW_tenplot_b(fwds, evokeds, noise_covs, stim, project_dir,
+                    concomitant = False, alpha = 7.5):
 
     log = dict(betas = [], actives = [])
     
-    solver_kwargs = dict(beta=0.3, alpha=alpha)
+    solver_kwargs = dict(beta = 0.3, alpha = alpha)
     solver_kwargs['epsilon'] = 5. / fwds[0]['sol']['data'].shape[-1]
     solver_kwargs['gamma'] = 1
-    solver_kwargs['concomitant'] = False
-    betas = np.linspace(0.2,0.9,11)
+    solver_kwargs['concomitant'] = concomitant
+    betas = np.linspace(0.15,0.3,11)
 
     # Test betas at 11 points
     for b in betas:

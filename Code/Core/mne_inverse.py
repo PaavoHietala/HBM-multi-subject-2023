@@ -107,6 +107,7 @@ def estimate_source_timecourse(subject, project_dir, raw, src_spacing, stc_metho
         fpath_stc = os.path.join(project_dir, 'Data', 'stc', fname_stc)
         
         if overwrite or not os.path.isfile(fpath_stc + '-lh.stc'):
+            print("Subject:" + subject + ":stimulus:" + stim)
             stc = mne.minimum_norm.apply_inverse(evoked, inv, lambda2,
                                                  method = stc_method)    
             stc.save(fpath_stc)

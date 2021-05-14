@@ -3,9 +3,12 @@ Get aMax values from slurm out files and print them divided by 2 to get safe
 alphas for all stimuli.
 '''
 
-job_id = '60025086_'
-files = ['/m/nbe/scratch/megci/MFinverse/reMTW/Data/slurm_out/' + job_id + str(i) + '.out' for i in range(0,24)]
+slurm_dir = '/m/nbe/scratch/megci/MFinverse/reMTW/5-subject/Data/slurm_out/'
+job_id = '60361386'
+
+files = [slurm_dir + job_id + '_' + str(i) + '.out' for i in range(0,24)]
 alphas = []
+betas = []
 
 for fname in files:
     with open(fname, 'r') as f:
@@ -13,5 +16,8 @@ for fname in files:
         for line in lines:
             if line.startswith('Got aMax='):
                 alphas.append(float(line.rstrip()[9:]) / 2)
+            elif line.startswith('Got beta_='):
+                betas.append(float(line.rstrip()[10:]))
 
 print(alphas)
+print(betas)

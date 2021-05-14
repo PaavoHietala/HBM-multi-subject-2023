@@ -80,7 +80,8 @@ def prepare_directories(project_dir):
                     'Data/avg',
                     'Data/labels',
                     'Data/cov',
-                    'Data/plot']:
+                    'Data/plot',
+                    'Data/slurm_out']:
         try:
             os.makedirs(project_dir + dirname)
         except FileExistsError:

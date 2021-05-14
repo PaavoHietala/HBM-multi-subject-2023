@@ -44,7 +44,7 @@ def compute_source_space(subject, project_dir, src_spacing, overwrite = False,
     if overwrite or not os.path.isfile(fpath):
         if not morph:
             src = mne.setup_source_space(subject, spacing = src_spacing,
-                                         add_dist=add_dist)
+                                         add_dist=add_dist, n_jobs = 16)
         else:
             # Load fsaverage source space and morph it to subject
             fname_ref = get_fname('fsaverage', 'src', src_spacing = src_spacing)
@@ -52,6 +52,8 @@ def compute_source_space(subject, project_dir, src_spacing, overwrite = False,
             
             src_ref = mne.read_source_spaces(fpath_ref)
             src = mne.morph_source_spaces(src_ref, subject_to=subject)
+            if add_dist:
+                mne.add_source_space_distances(src, n_jobs=16)
         src.save(fpath, overwrite = True)
 
 def calculate_bem_solution(subject, project_dir, overwrite):
