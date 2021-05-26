@@ -13,7 +13,8 @@ import mne
 import numpy as np
 
 def get_fname(subject, ftype, stc_method = None, src_spacing = None,
-              fname_raw = None, task = None, stim = None, layers = 1, hemi = 'lh'):
+              fname_raw = None, task = None, stim = None, layers = 1,
+              hemi = 'lh', suffix = None):
     '''
     Create a project-standard filename from given parameters.
     
@@ -37,6 +38,8 @@ def get_fname(subject, ftype, stc_method = None, src_spacing = None,
         How many layers the BEM model has. The default is 1.
     hemi: str, optional
         Which hemisphere the name is for, e.g. 'lh'. The default is 'lh'.
+    suffix : str, optional
+        A string to append to the end of the filename before file extension.
 
     Raises
     ------
@@ -50,23 +53,26 @@ def get_fname(subject, ftype, stc_method = None, src_spacing = None,
     '''
     
     if ftype == 'src':
-        return '-'.join([subject, src_spacing, 'src.fif'])
+        return '-'.join(filter(None, [subject, src_spacing, suffix, 'src.fif']))
     elif ftype == 'fwd':
-        return '-'.join([subject, src_spacing, 'fwd.fif'])
+        return '-'.join(filter(None, [subject, src_spacing, suffix, 'fwd.fif']))
     elif ftype == 'cov':
         run = os.path.split(fname_raw)[-1].split('_')[0]
-        return '-'.join([subject, run, 'cov.fif'])
+        return '-'.join(filter(None, [subject, run, suffix, 'cov.fif']))
     elif ftype == 'inv':
         run = os.path.split(fname_raw)[-1].split('_')[0]
-        return '-'.join([subject, src_spacing, run, 'inv.fif'])
+        return '-'.join(filter(None, [subject, src_spacing, run, suffix, 'inv.fif']))
     elif ftype == 'stc':
-        return '-'.join([subject, src_spacing, stc_method, task, stim])
+        return '-'.join(filter(None, [subject, src_spacing, stc_method, task,
+                                      stim, suffix]))
     elif ftype == 'stc_m':
-        return '-'.join([subject, src_spacing, stc_method, 'fsaverage', task, stim])
+        return '-'.join(filter(None, [subject, src_spacing, stc_method,
+                                      'fsaverage', task, stim, suffix]))
     elif ftype == 'bem':
-        return '-'.join([subject, layers, 'shell-bem-sol.fif'])
+        return '-'.join(filter(None, [subject, layers, suffix, 'shell-bem-sol.fif']))
     elif ftype == 'label':
-        return '-'.join([subject, src_spacing, stc_method, task, stim])
+        return '-'.join(filter(None, [subject, src_spacing, stc_method, task,
+                                      stim, suffix]))
     else:
         raise ValueError('Invalid file type ' + ftype)
 
@@ -88,7 +94,7 @@ def prepare_directories(project_dir):
             pass
 
 def average_stcs_source_space(subjects, project_dir, src_spacing, stc_method,
-                              task, stimuli, overwrite):
+                              task, stimuli, suffix, overwrite):
     '''
     Average the source time courses that have been morphed to fsaverage and
     save them per-stimuli to <project_dir>/Data/avg/
@@ -107,6 +113,8 @@ def average_stcs_source_space(subjects, project_dir, src_spacing, stc_method,
         Task in the estimated stcs, e.g. 'f'.
     stimuli: list of str
         List of stimuli for whcih the stcs are estimated.
+    suffix : str
+        Suffix to append to the end of the output filename before -ave.fif.
     overwrite : bool, optional
         Overwrite existing files switch. The default is False.
 
@@ -118,7 +126,8 @@ def average_stcs_source_space(subjects, project_dir, src_spacing, stc_method,
     # Average each stimulus and save the avg stc to disk
     for stim in stimuli:
         fname = get_fname('fsaverage', 'stc', stc_method = stc_method, 
-                          src_spacing = src_spacing, task = task, stim = stim)
+                          src_spacing = src_spacing, task = task, stim = stim,
+                          suffix = suffix)
         fpath = os.path.join(project_dir, 'Data', 'avg', fname)
         
         if overwrite or not os.path.isfile(fpath + '-lh.stc'):

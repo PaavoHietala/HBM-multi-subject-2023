@@ -186,8 +186,8 @@ def morph_to_fsaverage(subject, project_dir, src_spacing, stc_method,
     # Load surface time courses
     stcs = {}
     for stimulus in stimuli:
-        fname = get_fname(subject, 'stc', stc_method = stc_method, src_spacing=src_spacing,
-                          task = task, stim = stimulus)
+        fname = get_fname(subject, 'stc', stc_method = stc_method,
+                          src_spacing=src_spacing, task = task, stim = stimulus)
         fpath = os.path.join(project_dir, 'Data', 'stc', fname)
         stcs[stimulus] = mne.read_source_estimate(fpath)
     

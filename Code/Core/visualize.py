@@ -11,7 +11,10 @@ Created on Tue March 30 15:22:35 2021
 
 import os
 import mne
+import time
+import copy
 import numpy as np
+import matplotlib.pyplot as plt
 from matplotlib.colors import to_rgba
 from surfer import utils
 from .utils import get_fname
@@ -67,9 +70,64 @@ def label_peaks(subjects, project_dir, src_spacing, stc_method, task, stimuli,
                                  hemi = 'lh', n_steps = 5, coord_as_vert = True)
         print('Loading label', lpath)
         brain.add_label(lpath + '-lh.label', color = colors[c_idx], reset_camera = False)
+
+def find_peaks(project_dir, src_spacing, stc_method, task, stimuli, bilaterals, suffix):
+    '''
+    Find peak indices and hemispheres for averaged stc files
+
+    Parameters
+    ----------
+    project_dir : str
+        Base directory of the project with Code and Data subfolders.
+    src_spacing : str
+        Source space scheme used in this file, e.g. 'oct6'.
+    stc_method : str
+        Inversion method used, e.g. 'dSPM'.
+    task : str
+        Task in the estimated stcs, e.g. 'f'.
+    stimuli : list of str
+        List of stimuli for whcih the stcs are estimated.
+    bilaterals: list of str
+        List of bilateral stimuli (on midline); label peaks on both hemis.
+    suffix : str
+        Suffix to append to stc filename before -avg.fif
     
+    Returns
+    -------
+    peaks : list of int
+        List of peak valued vertex indices for each stimulus
+    peak_hemis : list of str
+        List of hemispheres for each peak index in same order
+    '''
+
+    peaks = []
+    peak_hemis = []
+
+    for stim in stimuli:
+        fname = get_fname('fsaverage', 'stc', stc_method = stc_method, 
+                          src_spacing = src_spacing, task = task, stim = stim,
+                          suffix = suffix)
+        fpath = os.path.join(project_dir, 'Data', 'avg', fname)
+        stc = mne.read_source_estimate(fpath)
+        
+        if stim not in bilaterals:
+            # Not bilateral; get global peak and store it in peaks and hemis
+            if np.max(stc.lh_data) > np.max(stc.rh_data):
+                hemi = 'lh'
+            else:
+                hemi = 'rh'
+            peaks.append(stc.get_peak(hemi = hemi)[0])
+            peak_hemis.append(hemi)
+        else:
+            # Bilateral; get both lh and rh peaks and store them
+            peaks.append(stc.get_peak(hemi = 'lh')[0])
+            peaks.append(stc.get_peak(hemi = 'rh')[0])
+            peak_hemis += ['lh', 'rh']
+    
+    return (peaks, peak_hemis)
+
 def expand_peak_labels(subjects, project_dir, src_spacing, stc_method, task,
-                       stimuli, colors, overwrite, bilaterals = []):
+                       stimuli, colors, suffix, overwrite, bilaterals = []):
     '''
     Create labels for peaks activation locations for each hemisphere and
     visualize the results.
@@ -90,6 +148,8 @@ def expand_peak_labels(subjects, project_dir, src_spacing, stc_method, task,
         List of stimuli for whcih the stcs are estimated.
     colors: list of str
         List of matplotlib colors for stimuli in the same order as stimuli.
+    suffix : str
+        Suffix to append to stc filename before -avg.fif
     overwrite : bool, optional
         Overwrite existing files switch. The default is False.
     bilaterals: list of str
@@ -113,39 +173,19 @@ def expand_peak_labels(subjects, project_dir, src_spacing, stc_method, task,
     v1_rh = mne.read_label('/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/'
                            + 'fsaverage' + '/label/rh.V1_exvivo.label', 'fsaverage')
     brain_rh.add_label(v1_rh, borders = 2)
-    
-    peaks = []
-    peak_hemis = []
 
     # Duplicate color values for bilateral stimuli
     bilateral_idx = [stimuli.index(stim) for stim in bilaterals]
     [colors.insert(i, colors[i]) for i in bilateral_idx[::-1]]
     colors_rgb = np.array([to_rgba(c) for c in colors])
 
-    # Find peaks for each averaged stimulus stc
-    for stim in stimuli:
-        fname = get_fname('fsaverage', 'stc', stc_method = stc_method, 
-                          src_spacing = src_spacing, task = task, stim = stim)
-        fpath = os.path.join(project_dir, 'Data', 'avg', fname)
-        stc = mne.read_source_estimate(fpath)
-        
-        if stim not in bilaterals:
-            # Not bilateral; get global peak and store it in peaks and hemis
-            if np.max(stc.lh_data) > np.max(stc.rh_data):
-                hemi = 'lh'
-            else:
-                hemi = 'rh'
-            peaks.append(stc.get_peak(hemi = hemi)[0])
-            peak_hemis.append(hemi)
-        else:
-            # Bilateral; get both lh and rh peaks and store them
-            peaks.append(stc.in_label(v1_lh).get_peak(hemi = 'lh')[0])
-            peaks.append(stc.in_label(v1_rh).get_peak(hemi = 'rh')[0])
-            peak_hemis += ['lh', 'rh']
+    peaks, peak_hemis = find_peaks(project_dir, src_spacing, stc_method, task,
+                                   stimuli, bilaterals, suffix)
     
     # Update stimulus list to accomodate for bilateral peaks so the lists can
     # be index-matched
 
+    stimuli = copy.deepcopy(stimuli)
     [stimuli.insert(i, stimuli[i]) for i in bilateral_idx[::-1]]
     
     # Remove duplicate peaks, because they are indistinguishable
@@ -234,7 +274,6 @@ def label_all_vertices(subjects, project_dir, src_spacing, stc_method, task,
     data = [[], []]
     colors_rgb = np.array([to_rgba(c) for c in colors])
     
-    
     # Load all stcs, limit to occipital cortex and normalize their values to 0..1
     occipital_idx_lh = []
     annotation_lh = mne.read_labels_from_annot('fsaverage', hemi = 'lh')
@@ -245,8 +284,6 @@ def label_all_vertices(subjects, project_dir, src_spacing, stc_method, task,
     annotation_rh = mne.read_labels_from_annot('fsaverage', hemi = 'rh')
     for label in [l for l in annotation_rh if l.name in ['lingual-rh', 'lateraloccipital-rh', 'cuneus-rh', 'pericalcarine-rh']]:
         occipital_idx_rh += label.get_vertices_used().tolist()
-        
-        
         
     print('Loading stcs')
     for stim in stimuli:
@@ -302,3 +339,100 @@ def label_all_vertices(subjects, project_dir, src_spacing, stc_method, task,
     brain_lh.show_view({'elevation' : 100, 'azimuth' : -55}, distance = 350)
     brain_rh.show()
     brain_rh.show_view({'elevation' : 100, 'azimuth' : -125}, distance = 350)
+
+def plot_foci(project_dir, src_spacing, stc_method, task, stimuli, colors,
+              bilaterals, suffix, mode, overwrite):
+    '''
+    Plot foci bubbles on fsaverage brain. Eccentricity and angle can be controlled
+    with colors parameter
+
+    Parameters
+    ----------
+    project_dir : str
+        Base directory of the project with Code and Data subfolders.
+    src_spacing : str
+        Source space scheme used in this file, e.g. 'oct6'.
+    stc_method : str
+        Inversion method used, e.g. 'dSPM'.
+    task : str
+        Task in the estimated stcs, e.g. 'f'.
+    stimuli : list of str
+        List of stimuli for whcih the stcs are estimated.
+    colors : list of str
+        List of matplotlib colors for stimuli in the same order as stimuli.
+    bilaterals: list of str
+        List of bilateral stimuli (on midline); label peaks on both hemis.
+    suffix : str
+        Suffix to append to stc filename before -avg.fif
+    mode : str
+        Either 'polar' or 'ecc', affects only titles and image names 
+    overwrite : bool, optional
+        Overwrite existing files switch. The default is False.
+
+    Returns
+    -------
+    None.
+    '''
+    
+    title = stc_method + " " + suffix + " average " + mode
+    brain = mne.viz.Brain('fsaverage', 'split', 'inflated', title = title,
+                          background = (255, 255, 255), size = (1000, 600),
+                          show = False)
+
+    # Duplicate color values and stimulus names for bilateral stimuli, get peaks
+    bilateral_idx = [stimuli.index(stim) for stim in bilaterals]
+    [colors.insert(i, colors[i]) for i in bilateral_idx[::-1]]
+    colors_rgb = np.array([to_rgba(c) for c in colors])
+
+    peaks, peak_hemis = find_peaks(project_dir, src_spacing, stc_method, task,
+                                   stimuli, bilaterals, suffix)
+    
+    stimuli = copy.deepcopy(stimuli)
+    [stimuli.insert(i, stimuli[i]) for i in bilateral_idx[::-1]]
+    
+    # Add V1 label and found peaks on the brain & plot
+    for hemi_id, hemi in enumerate(['lh', 'rh']):
+        # Label V1 on the cortex
+        v1 = mne.read_label('/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/'
+                            + 'fsaverage/label/' + hemi + '.V1_exvivo.label',
+                            'fsaverage')
+        brain.add_label(v1, borders = 2)
+
+        # Prepare lists of colors, peaks, stimulus names and color names for plot
+        colors_ = np.zeros((peak_hemis.count(hemi), 4))
+        peaks_ = []
+        stimuli_ = []
+        c_names = []
+        for idx, hemi_idx in enumerate([j for j, ph in enumerate(peak_hemis) if ph == hemi]):
+            colors_[idx] = colors_rgb[hemi_idx]
+            peaks_.append(peaks[hemi_idx])
+            stimuli_.append(stimuli[hemi_idx])
+            c_names.append(colors[hemi_idx])
+        
+        # Add foci to brain
+        print('Adding ' + hemi + ' foci...')
+        used_verts = []
+        for idx in range(len(colors_)):
+            print("Adding " + stimuli_[idx] + " color " + c_names[idx])
+
+            n = used_verts.count(peaks_[idx])
+            brain.add_foci(peaks_[idx], coords_as_verts = True,
+                           scale_factor = 0.5 + n * 0.25,
+                           color = colors_[idx], alpha = 0.75,
+                           name = stimuli_[idx], hemi = hemi)
+            used_verts.append(peaks_[idx])
+    
+    brain.show_view({'elevation' : 100, 'azimuth' : -60}, distance = 350, col = 0)
+    brain.show_view({'elevation' : 100, 'azimuth' : -120}, distance = 350, col = 1)
+    brain.show()
+
+    # Cropping code from https://mne.tools/stable/auto_examples/visualization/publication_figure.html
+    ss = brain.screenshot()
+    nonwhite_pix = (ss != 255).any(-1)
+    nonwhite_row = nonwhite_pix.any(1)
+    nonwhite_col = nonwhite_pix.any(0)
+    cropped = ss[nonwhite_row][:, nonwhite_col]
+
+    plt.imsave(project_dir + 'Data/plot/' + title + '.png', cropped)
+
+    print('Done')

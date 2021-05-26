@@ -27,7 +27,7 @@ mne.set_config('SUBJECTS_DIR', subjects_dir)
 # List of subject names
 
 exclude = [5, 8, 13, 15]
-subjects = ['MEGCI_S' + str(idx) for idx in list(range(22,25)) if idx not in exclude]
+subjects = ['MEGCI_S' + str(idx) for idx in list(range(1,2)) if idx not in exclude]
 
 # Source point spacing for source space calculation
 
@@ -49,6 +49,10 @@ task = 'f'
 
 stimuli = ['sector' + str(num) for num in range(1,25)]
 
+# Suffix to append to filenames, used to distinguish averages of N subjects
+
+suffix = '10subjects'
+
 # List of raw rest files for covariance matrix and extracting sensor info
 
 rest_raws = ['/m/nbe/scratch/megci/data/MEG/megci_rawdata_mc_ic/' + subject.lower()
@@ -64,12 +68,14 @@ coreg_files = ['/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/' + subject +
 evoked_files = [project_dir + 'Data/Evoked/' + subject + '_f-ave.fif' for
                 subject in subjects]
 
-# List of colors for each stimulus label
+# List of colors for each stimulus label, eccentricity rings and polar angles
 
 colors = ['mistyrose', 'plum', 'thistle', 'lightsteelblue', 'lightcyan', 'lightgreen',
           'lightyellow', 'papayawhip', 'lightcoral', 'violet', 'mediumorchid', 'royalblue',
           'aqua', 'mediumspringgreen', 'khaki', 'navajowhite', 'red', 'purple',
           'blueviolet', 'blue', 'turquoise', 'lime', 'yellow', 'orange']
+colors_ecc = ['blue'] * 8 + ['yellow'] * 8 + ['red'] * 8
+colors_polar = ['cyan', 'indigo', 'violet', 'magenta', 'red', 'orange', 'yellow', 'green'] * 3
 
 # List of stimuli that should show response on both hemispheres:
 
@@ -82,18 +88,20 @@ overwrite = True
 ### Pipeline steps to run -----------------------------------------------------
 
 
-steps = {'prepare_directories' :        True,
-         'compute_source_space' :       True,
+steps = {'prepare_directories' :        False,
+         'compute_source_space' :       False,
          'calculate_bem_solution' :     False,
-         'calculate_forward_solution' : True,
+         'calculate_forward_solution' : False,
          'compute_covariance_matrix' :  False,
-         'construct_inverse_operator' : True,
-         'estimate_source_timecourse' : True,
-         'morph_to_fsaverage' :         True,
+         'construct_inverse_operator' : False,
+         'estimate_source_timecourse' : False,
+         'morph_to_fsaverage' :         False,
          'average_stcs_source_space' :  False,
-         'label_peaks' :                False,
-         'expand_peak_labels' :         False,
-         'label_all_vertices' :         False}
+         'label_peaks' :                False, # Not really useful
+         'expand_peak_labels' :         False, # For intermediate plots only
+         'label_all_vertices' :         False, # Broken
+         'plot_eccentricity_foci' :     True,
+         'plot_polar_foci' :            True} 
 
 
 ### Run the pipeline ----------------------------------------------------------
@@ -156,7 +164,7 @@ for idx, subject in enumerate(subjects):
 # Average data from all subjects for selected task and stimuli
 if steps['average_stcs_source_space']:
     utils.average_stcs_source_space(subjects, project_dir, src_spacing, stc_method,
-                                    task, stimuli, overwrite)
+                                    task, stimuli, suffix, overwrite)
     
 # Select peaks from all averaged stimuli and plot on fsaverage
 if steps['label_peaks']:
@@ -166,10 +174,20 @@ if steps['label_peaks']:
 # Select peaks from all averaged stimuli, grow them 7mm and plot on lh + rh
 if steps['expand_peak_labels']:
     visualize.expand_peak_labels(subjects, project_dir, src_spacing, stc_method,
-                                 task, stimuli, colors, overwrite,
+                                 task, stimuli, colors, suffix, overwrite,
                                  bilaterals = bilaterals)
 
 # Label each vertex based on normalized stimulus data and plot on lh + rh
 if steps['label_all_vertices']:
     visualize.label_all_vertices(subjects, project_dir, src_spacing, stc_method,
                                  task, stimuli, colors, overwrite)
+
+# Plot all stimulus peaks on fsaverage LH and RH, color based on 3-ring eccentricity
+if steps['plot_eccentricity_foci']:
+    visualize.plot_foci(project_dir, src_spacing, stc_method, task, stimuli,
+                        colors_ecc, bilaterals, suffix, 'ecc', overwrite)
+
+# Plot all stimulus peaks on fsaverage LH and RH, color based on wedge
+if steps['plot_polar_foci']:
+    visualize.plot_foci(project_dir, src_spacing, stc_method, task, stimuli,
+                        colors_polar, bilaterals, suffix, 'polar', overwrite)
