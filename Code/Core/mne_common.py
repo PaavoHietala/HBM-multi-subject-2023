@@ -183,6 +183,11 @@ def morph_to_fsaverage(subject, project_dir, src_spacing, stc_method,
     None.
     '''
 
+    # Load fsaverage source space
+    fname_src = get_fname('fsaverage', 'src', src_spacing = src_spacing)
+    fpath_src = os.path.join(project_dir, 'Data', 'src', fname_src)
+    src = mne.read_source_spaces(fpath_src, verbose = False)
+
     # Load surface time courses
     stcs = {}
     for stimulus in stimuli:
@@ -193,12 +198,13 @@ def morph_to_fsaverage(subject, project_dir, src_spacing, stc_method,
     
     # Morph each stimulus stc to fsaverage and save to disk
     for stim in stcs:
+        print('Morphing ' + stim)
         fname_stc_m = get_fname(subject, 'stc_m', stc_method = stc_method,
                                 src_spacing = src_spacing, task = task, stim = stim)
         fpath_stc_m = os.path.join(project_dir, 'Data', 'stc_m', fname_stc_m)
         
         if overwrite or not os.path.isfile(fpath_stc_m + '-lh.stc'):
             morph = mne.compute_source_morph(stcs[stim], subject_from = subject,
-                                             subject_to = 'fsaverage')
+                                             subject_to = 'fsaverage', src_to = src)
             stc_m = morph.apply(stcs[stim])
             stc_m.save(fpath_stc_m)

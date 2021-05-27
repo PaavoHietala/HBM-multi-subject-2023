@@ -193,3 +193,108 @@ def restrict_src_to_label(subject, project_dir, src_spacing, overwrite, labels):
         #src.plot()
 
         src.save(fpath, overwrite = True)
+
+def find_peaks(project_dir, src_spacing, stc_method, task, stimuli, bilaterals,
+               suffix, return_index = False):
+    '''
+    Find peak indices and hemispheres for averaged stc files
+
+    Parameters
+    ----------
+    project_dir : str
+        Base directory of the project with Code and Data subfolders.
+    src_spacing : str
+        Source space scheme used in this file, e.g. 'oct6'.
+    stc_method : str
+        Inversion method used, e.g. 'dSPM'.
+    task : str
+        Task in the estimated stcs, e.g. 'f'.
+    stimuli : list of str
+        List of stimuli for whcih the stcs are estimated.
+    bilaterals: list of str
+        List of bilateral stimuli (on midline); label peaks on both hemis.
+    suffix : str
+        Suffix to append to stc filename before -avg.fif
+    return_index : bool
+        Whether to return peak vertex index instead of vertex ID (default)
+    
+    Returns
+    -------
+    peaks : list of int
+        List of peak valued vertex indices for each stimulus
+    peak_hemis : list of str
+        List of hemispheres for each peak index in same order
+    '''
+
+    peaks = []
+    peak_hemis = []
+
+    for stim in stimuli:
+        fname = get_fname('fsaverage', 'stc', stc_method = stc_method, 
+                          src_spacing = src_spacing, task = task, stim = stim,
+                          suffix = suffix)
+        fpath = os.path.join(project_dir, 'Data', 'avg', fname)
+        stc = mne.read_source_estimate(fpath)
+        
+        if stim not in bilaterals:
+            # Not bilateral; get global peak and store it in peaks and hemis
+            if np.max(stc.lh_data) > np.max(stc.rh_data):
+                hemi = 'lh'
+            else:
+                hemi = 'rh'
+            peaks.append(stc.get_peak(hemi = hemi, vert_as_index = return_index)[0])
+            peak_hemis.append(hemi)
+        else:
+            # Bilateral; get both lh and rh peaks and store them
+            peaks.append(stc.get_peak(hemi = 'lh', vert_as_index = return_index)[0])
+            peaks.append(stc.get_peak(hemi = 'rh', vert_as_index = return_index)[0])
+            peak_hemis += ['lh', 'rh']
+    
+    return (peaks, peak_hemis)
+
+def tabulate_geodesics(project_dir, src_spacing, stc_method, task, stimuli,
+                       bilaterals, suffix, overwrite):
+
+    suffix = suffix.lstrip('0123456789')
+    distances = np.zeros((5, len(stimuli) + len(bilaterals)))
+
+    # Load V1 labels and source space with distances
+    v1_lh = mne.read_label('/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/'
+                            + 'fsaverage/label/lh.V1_exvivo.label', 'fsaverage')
+    v1_rh = mne.read_label('/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/'
+                            + 'fsaverage/label/rh.V1_exvivo.label', 'fsaverage')
+    fname_src = get_fname('fsaverage', 'src', src_spacing = src_spacing)
+    src = mne.read_source_spaces(project_dir + 'Data/src/' + fname_src, verbose = False)
+
+    # Comparison list to get inf distance if the peak is on the wrong hemi
+    expected_hemi = [h + 'h' for h in "rrlrllllrr"] * 3
+
+    for n_idx, suffix in enumerate([str(n) + suffix for n in [1, 5, 10, 15, 20]]):
+        print('Solving geodesics for ' + suffix)
+
+        peaks, peak_hemis = find_peaks(project_dir, src_spacing, stc_method,
+                                       task, stimuli, bilaterals, suffix,
+                                       return_index = False)
+        
+        # Count average geodesic distance between peaks and V1 label points
+        for peak_idx, peak in enumerate(peaks):
+            dist = 0
+            hemi_idx = 0 if peak_hemis[peak_idx] == 'lh' else 1
+            if peak_hemis[peak_idx] == expected_hemi[peak_idx]:
+                if peak_hemis[peak_idx] == 'lh':
+                    used_verts = v1_lh.get_vertices_used(src[0]['vertno'])
+                else:
+                    used_verts = v1_rh.get_vertices_used(src[1]['vertno'])
+
+                for vertex in used_verts:
+                    d = src[hemi_idx]['dist'][peak, vertex] * 1000
+                    if d == 0:
+                        print(peak, vertex)
+                    dist += src[hemi_idx]['dist'][peak, vertex] * 1000 # m -> mm
+                dist /= len(used_verts)
+            else:
+                dist = np.inf
+            distances[n_idx, peak_idx] = dist
+    
+    np.savetxt(project_dir + 'Data/plot/distances.csv', distances,
+               delimiter = ',', fmt = '%.3f')

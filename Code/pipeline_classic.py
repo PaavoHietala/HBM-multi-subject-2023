@@ -27,7 +27,7 @@ mne.set_config('SUBJECTS_DIR', subjects_dir)
 # List of subject names
 
 exclude = [5, 8, 13, 15]
-subjects = ['MEGCI_S' + str(idx) for idx in list(range(1,2)) if idx not in exclude]
+subjects = ['MEGCI_S' + str(idx) for idx in list(range(1,25)) if idx not in exclude]
 
 # Source point spacing for source space calculation
 
@@ -50,8 +50,9 @@ task = 'f'
 stimuli = ['sector' + str(num) for num in range(1,25)]
 
 # Suffix to append to filenames, used to distinguish averages of N subjects
+# Expected format is len(subjects)< optional text>
 
-suffix = '10subjects'
+suffix = str(len(subjects)) + 'subjects'
 
 # List of raw rest files for covariance matrix and extracting sensor info
 
@@ -100,8 +101,9 @@ steps = {'prepare_directories' :        False,
          'label_peaks' :                False, # Not really useful
          'expand_peak_labels' :         False, # For intermediate plots only
          'label_all_vertices' :         False, # Broken
-         'plot_eccentricity_foci' :     True,
-         'plot_polar_foci' :            True} 
+         'plot_eccentricity_foci' :     False,
+         'plot_polar_foci' :            False,
+         'tabulate_geodesics' :         True} 
 
 
 ### Run the pipeline ----------------------------------------------------------
@@ -115,7 +117,7 @@ if steps['compute_source_space']:
     mne_common.compute_source_space('fsaverage', project_dir, src_spacing, overwrite,
                                     add_dist = True)
 
-# Following steps are run on per-subject basis
+# Faollowing steps are run on per-subject basis
 for idx, subject in enumerate(subjects):
     
     # Compute source spaces for subjects and save them in ../Data/src/
@@ -191,3 +193,8 @@ if steps['plot_eccentricity_foci']:
 if steps['plot_polar_foci']:
     visualize.plot_foci(project_dir, src_spacing, stc_method, task, stimuli,
                         colors_polar, bilaterals, suffix, 'polar', overwrite)
+
+# Tabulate geodesic distances between peaks and V1 on 1-20 averaged subjects
+if steps['tabulate_geodesics']:
+    utils.tabulate_geodesics(project_dir, src_spacing, stc_method, task, stimuli,
+                             bilaterals, suffix, overwrite)
