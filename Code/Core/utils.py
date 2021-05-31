@@ -94,7 +94,8 @@ def prepare_directories(project_dir):
             pass
 
 def average_stcs_source_space(subjects, project_dir, src_spacing, stc_method,
-                              task, stimuli, suffix, overwrite):
+                              task, stimuli, suffix, timing = None,
+                              overwrite = False):
     '''
     Average the source time courses that have been morphed to fsaverage and
     save them per-stimuli to <project_dir>/Data/avg/
@@ -115,6 +116,9 @@ def average_stcs_source_space(subjects, project_dir, src_spacing, stc_method,
         List of stimuli for whcih the stcs are estimated.
     suffix : str
         Suffix to append to the end of the output filename before -ave.fif.
+    timing : None or list, optional
+        List of single timepoints per subject to which the estimate is confined
+        to, default is False (average all timepoints)
     overwrite : bool, optional
         Overwrite existing files switch. The default is False.
 
@@ -140,9 +144,11 @@ def average_stcs_source_space(subjects, project_dir, src_spacing, stc_method,
                 stcs.append(mne.read_source_estimate(fpath_m))
             
             # Set the first stc as base and add all others to it, divide by n
-            avg = stcs[0].copy()
+            avg = stcs[0].crop(tmin = timing[0], tmax = timing[0],
+                               include_tmax = True).copy()
             for i in range(1, len(subjects)):
-                avg.data += stcs[i].data
+                avg.data += stcs[i].crop(tmin = timing[i], tmax = timing[i],
+                                         include_tmax = True).data
             avg.data = avg.data / len(subjects)
             
             # Save to disk

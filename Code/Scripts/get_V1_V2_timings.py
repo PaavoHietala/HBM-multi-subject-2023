@@ -151,6 +151,30 @@ def evoked_timing(evoked_dir, task, subjects, stimuli):
         
     return (V1, V2)
 
+def medians(times, start = None, stop = None):
+    '''
+    Calculate median timing for each subject, exclude times <= start and >= stop
+
+    Parameters
+    ----------
+    times : np.array
+        Timings of all subjects and stimuli in [stimulus, subject] format
+    start : float, optional
+        Start of accepted value interval, by default None
+    stop : float, optional
+        Stop of accepted value interval, by default None
+    
+    Returns
+    -------
+    timing : np.array
+        Median peak times for each subject
+    '''
+
+    times[times >= stop] = np.nan
+    times[times <= start] = np.nan
+
+    return np.nanmedian(times, axis = 0)
+
 if mode == 'stc':
     V1, V2 = stc_timing(stc_dir, src_spacing, stc_method, task, subjects, stimuli)
 elif mode == 'evoked':
@@ -159,3 +183,8 @@ elif mode == 'evoked':
 # Output V1 and V2 arrays to csv files
 np.savetxt(output_dir + 'V1_timing_' + mode + '.csv', V1, delimiter = ',', fmt = '%.3f')
 np.savetxt(output_dir + 'V2_timing_' + mode + '.csv', V2, delimiter = ',', fmt = '%.3f')
+
+# Calculate subject-specific medians and save them in separate file
+V1_medians = medians(V1, start = 0.060, stop = 0.100)
+np.savetxt(output_dir + 'V1_medians_' + mode + '.csv', V1_medians,
+           delimiter = ',', fmt = '%.3f')

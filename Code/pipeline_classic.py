@@ -9,6 +9,7 @@ Created on Tue Feb  2 15:31:30 2021
 import mne
 import os
 import sys
+import numpy as np
 
 # Dirty hack to get the relative import from same dir to work
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
@@ -27,7 +28,7 @@ mne.set_config('SUBJECTS_DIR', subjects_dir)
 # List of subject names
 
 exclude = [5, 8, 13, 15]
-subjects = ['MEGCI_S' + str(idx) for idx in list(range(1,25)) if idx not in exclude]
+subjects = ['MEGCI_S' + str(idx) for idx in list(range(16,17)) if idx not in exclude]
 
 # Source point spacing for source space calculation
 
@@ -52,7 +53,7 @@ stimuli = ['sector' + str(num) for num in range(1,25)]
 # Suffix to append to filenames, used to distinguish averages of N subjects
 # Expected format is len(subjects)< optional text>
 
-suffix = str(len(subjects)) + 'subjects'
+suffix = str(len(subjects)) + 'subjects-16'
 
 # List of raw rest files for covariance matrix and extracting sensor info
 
@@ -68,6 +69,9 @@ coreg_files = ['/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/' + subject +
 
 evoked_files = [project_dir + 'Data/Evoked/' + subject + '_f-ave.fif' for
                 subject in subjects]
+
+# File containing V1 peak timings for each subject
+timing_fpath = project_dir + 'Data/plot/V1_medians_evoked.csv'
 
 # List of colors for each stimulus label, eccentricity rings and polar angles
 
@@ -97,13 +101,13 @@ steps = {'prepare_directories' :        False,
          'construct_inverse_operator' : False,
          'estimate_source_timecourse' : False,
          'morph_to_fsaverage' :         False,
-         'average_stcs_source_space' :  False,
+         'average_stcs_source_space' :  True,
          'label_peaks' :                False, # Not really useful
          'expand_peak_labels' :         False, # For intermediate plots only
          'label_all_vertices' :         False, # Broken
-         'plot_eccentricity_foci' :     False,
-         'plot_polar_foci' :            False,
-         'tabulate_geodesics' :         True} 
+         'plot_eccentricity_foci' :     True,
+         'plot_polar_foci' :            True,
+         'tabulate_geodesics' :         False} 
 
 
 ### Run the pipeline ----------------------------------------------------------
@@ -165,8 +169,18 @@ for idx, subject in enumerate(subjects):
 
 # Average data from all subjects for selected task and stimuli
 if steps['average_stcs_source_space']:
+    # Load V1 peak timing for all subjects
+    timing = np.loadtxt(timing_fpath).tolist()
+
+    # Restrict timings only to selected subjects
+    [timing.insert(i - 1, 0) for i in exclude]
+    timing = [t for i, t in enumerate(timing) if str(i + 1)
+              in [sub[7:] for sub in subjects]]
+    print('Loaded timings: ', timing)
+
     utils.average_stcs_source_space(subjects, project_dir, src_spacing, stc_method,
-                                    task, stimuli, suffix, overwrite)
+                                    task, stimuli, suffix, timing = timing,
+                                    overwrite = overwrite)
     
 # Select peaks from all averaged stimuli and plot on fsaverage
 if steps['label_peaks']:
