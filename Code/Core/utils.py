@@ -94,7 +94,7 @@ def prepare_directories(project_dir):
             pass
 
 def average_stcs_source_space(subjects, project_dir, src_spacing, stc_method,
-                              task, stimuli, suffix, timing = None,
+                              task, stimuli, suffix = None, timing = None,
                               overwrite = False):
     '''
     Average the source time courses that have been morphed to fsaverage and
@@ -139,16 +139,23 @@ def average_stcs_source_space(subjects, project_dir, src_spacing, stc_method,
             stcs = []
             for subject in subjects:
                 fname_m = get_fname(subject, 'stc_m', stc_method = stc_method,
-                                    src_spacing = src_spacing, task = task, stim = stim)
+                                    src_spacing = src_spacing, task = task,
+                                    stim = stim,
+                                    suffix = (suffix if stc_method == 'remtw' else None))
                 fpath_m = os.path.join(project_dir, 'Data', 'stc_m', fname_m)
                 stcs.append(mne.read_source_estimate(fpath_m))
             
             # Set the first stc as base and add all others to it, divide by n
-            avg = stcs[0].crop(tmin = timing[0], tmax = timing[0],
-                               include_tmax = True).copy()
-            for i in range(1, len(subjects)):
-                avg.data += stcs[i].crop(tmin = timing[i], tmax = timing[i],
-                                         include_tmax = True).data
+            if timing == None:
+                avg = stcs[0].copy()
+                for i in range(1, len(subjects)):
+                    avg.data += stcs[i].data
+            else:
+                avg = stcs[0].crop(tmin = timing[0], tmax = timing[0],
+                                   include_tmax = True).copy()
+                for i in range(1, len(subjects)):
+                    avg.data += stcs[i].crop(tmin = timing[i], tmax = timing[i],
+                                             include_tmax = True).data
             avg.data = avg.data / len(subjects)
             
             # Save to disk
@@ -201,7 +208,7 @@ def restrict_src_to_label(subject, project_dir, src_spacing, overwrite, labels):
         src.save(fpath, overwrite = True)
 
 def find_peaks(project_dir, src_spacing, stc_method, task, stimuli, bilaterals,
-               suffix, return_index = False):
+               suffix, return_index = False, subject = 'fsaverage', mode = 'avg'):
     '''
     Find peak indices and hemispheres for averaged stc files
 
@@ -223,6 +230,10 @@ def find_peaks(project_dir, src_spacing, stc_method, task, stimuli, bilaterals,
         Suffix to append to stc filename before -avg.fif
     return_index : bool
         Whether to return peak vertex index instead of vertex ID (default)
+    subject : str
+        Name of the subject the stc is for, defaults to fsaverage
+    mode : str
+        Type of stc, can be either stc, stc_m or avg. Defaults to avg
     
     Returns
     -------
@@ -236,10 +247,11 @@ def find_peaks(project_dir, src_spacing, stc_method, task, stimuli, bilaterals,
     peak_hemis = []
 
     for stim in stimuli:
-        fname = get_fname('fsaverage', 'stc', stc_method = stc_method, 
-                          src_spacing = src_spacing, task = task, stim = stim,
-                          suffix = suffix)
-        fpath = os.path.join(project_dir, 'Data', 'avg', fname)
+        fname = get_fname(('fsaverage' if mode == 'avg' else subject),
+                          ('stc_m' if mode == 'stc_m' else 'stc'),
+                          stc_method = stc_method, src_spacing = src_spacing,
+                          task = task, stim = stim, suffix = suffix)
+        fpath = os.path.join(project_dir, 'Data', mode, fname)
         stc = mne.read_source_estimate(fpath)
         
         if stim not in bilaterals:
@@ -259,28 +271,30 @@ def find_peaks(project_dir, src_spacing, stc_method, task, stimuli, bilaterals,
     return (peaks, peak_hemis)
 
 def tabulate_geodesics(project_dir, src_spacing, stc_method, task, stimuli,
-                       bilaterals, suffix, overwrite):
+                       bilaterals, suffix, overwrite, counts = [1, 5, 10, 15, 20],
+                       subject = 'fsaverage', mode = 'avg'):
 
     suffix = suffix.lstrip('0123456789')
-    distances = np.zeros((5, len(stimuli) + len(bilaterals)))
+    distances = np.zeros((len(counts), len(stimuli) + len(bilaterals)))
 
     # Load V1 labels and source space with distances
     v1_lh = mne.read_label('/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/'
-                            + 'fsaverage/label/lh.V1_exvivo.label', 'fsaverage')
+                            + subject + '/label/lh.V1_exvivo.label', subject)
     v1_rh = mne.read_label('/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/'
-                            + 'fsaverage/label/rh.V1_exvivo.label', 'fsaverage')
-    fname_src = get_fname('fsaverage', 'src', src_spacing = src_spacing)
+                            + subject + '/label/rh.V1_exvivo.label', subject)
+    fname_src = get_fname(subject, 'src', src_spacing = src_spacing)
     src = mne.read_source_spaces(project_dir + 'Data/src/' + fname_src, verbose = False)
 
     # Comparison list to get inf distance if the peak is on the wrong hemi
     expected_hemi = [h + 'h' for h in "rrlrllllrr"] * 3
 
-    for n_idx, suffix in enumerate([str(n) + suffix for n in [1, 5, 10, 15, 20]]):
+    for n_idx, suffix in enumerate([str(n) + suffix for n in counts]):
         print('Solving geodesics for ' + suffix)
 
         peaks, peak_hemis = find_peaks(project_dir, src_spacing, stc_method,
                                        task, stimuli, bilaterals, suffix,
-                                       return_index = False)
+                                       return_index = False, subject = subject,
+                                       mode = mode)
         
         # Count average geodesic distance between peaks and V1 label points
         for peak_idx, peak in enumerate(peaks):
@@ -302,5 +316,5 @@ def tabulate_geodesics(project_dir, src_spacing, stc_method, task, stimuli,
                 dist = np.inf
             distances[n_idx, peak_idx] = dist
     
-    np.savetxt(project_dir + 'Data/plot/distances.csv', distances,
-               delimiter = ',', fmt = '%.3f')
+    np.savetxt(project_dir + 'Data/plot/distances_' + subject + '_' + mode + '.csv',
+               distances, delimiter = ',', fmt = '%.3f')

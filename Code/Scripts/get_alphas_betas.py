@@ -1,6 +1,5 @@
 '''
-Get aMax values from slurm out files and print them divided by 2 to get safe
-alphas for all stimuli.
+Get safe alpha and beta values from slurm out files and print them for all stimuli.
 '''
 
 slurm_dir = '/m/nbe/scratch/megci/MFinverse/reMTW/5-subject/Data/slurm_out/'

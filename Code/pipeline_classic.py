@@ -28,7 +28,7 @@ mne.set_config('SUBJECTS_DIR', subjects_dir)
 # List of subject names
 
 exclude = [5, 8, 13, 15]
-subjects = ['MEGCI_S' + str(idx) for idx in list(range(16,17)) if idx not in exclude]
+subjects = ['MEGCI_S' + str(idx) for idx in list(range(1,25)) if idx not in exclude]
 
 # Source point spacing for source space calculation
 
@@ -53,7 +53,7 @@ stimuli = ['sector' + str(num) for num in range(1,25)]
 # Suffix to append to filenames, used to distinguish averages of N subjects
 # Expected format is len(subjects)< optional text>
 
-suffix = str(len(subjects)) + 'subjects-16'
+suffix = str(len(subjects)) + 'subjects-avg-test'
 
 # List of raw rest files for covariance matrix and extracting sensor info
 

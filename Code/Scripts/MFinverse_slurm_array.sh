@@ -1,12 +1,12 @@
 #!/bin/bash
 #SBATCH --job-name=mfinverse
-#SBATCH --output=/m/nbe/scratch/megci/MFinverse/reMTW/5-subject-concomitant/Data/slurm_out/%A_%a.out
-#SBATCH --error=/m/nbe/scratch/megci/MFinverse/reMTW/5-subject-concomitant/Data/slurm_out/%A_%a_error.out
+#SBATCH --output=/m/nbe/scratch/megci/MFinverse/reMTW/Data/slurm_out/15subj_%A_%a.out
+#SBATCH --error=/m/nbe/scratch/megci/MFinverse/reMTW/Data/slurm_out/15subj_%A_%a_error.out
 #SBATCH --open-mode=append
-#SBATCH --array=20
-#SBATCH --time=03:00:00
+#SBATCH --array=2
+#SBATCH --time=03:30:00
 #SBATCH --mem=16G
-#SBATCH -c 4
+#SBATCH -c 8
 #SBATCH --gres=gpu:1
 
 stimuli=(sector1 sector2 sector3 sector4 sector5 sector6
@@ -22,7 +22,6 @@ STIM=${stimuli[SLURM_ARRAY_TASK_ID]}
 
 # Run unbuffered to update the .out files instantly when something happens
 srun xvfb-run python -u /m/nbe/scratch/megci/MFinverse/Code/pipeline_reMTW.py \
-    -stim=$STIM -target=3 -time=0.08,0.08 -dir=/m/nbe/scratch/megci/MFinverse/reMTW/5-subject-concomitant/ \
-    -concomitant=True -alpha=1.5
+    -stim=$STIM -target=2 -dir=/m/nbe/scratch/megci/MFinverse/reMTW/
 
 #-alpha=$ALPHA -beta=0.5

@@ -6,6 +6,7 @@ Created on Thu May 27 15:22:35 2021
 @author: hietalp2
 '''
 
+import math
 import seaborn as sns
 import numpy as np
 import pandas as pd
@@ -14,16 +15,28 @@ import matplotlib.pyplot as plt
 # Settings ---------------------------------------------------------------------
 
 # Font size for x and y labels
+
 font = 11
 
 # Directory inside which all actions are taken
-project_dir = '/m/nbe/scratch/megci/MFinverse/Classic/Data/plot/'
+
+project_dir = '/m/nbe/scratch/megci/MFinverse/reMTW/Data/plot/'
+
+# Identifier string in filename between distances and csv
+
+identifier = '_MEGCI_S1_stc' #'_fsaverage_avg'
 
 # CSV File with all the geodesic distances in [nave, peak] format
-input_f = 'distances.csv'
+
+input_f = 'distances' + identifier + '.csv'
 
 # Row titles, usually numbers of averaged subjects for each row 
+
 rows = ['1', '5', '10', '15', '20']
+
+# y-axis label
+
+ylabel = "Included subjects"
 
 # Run the code -----------------------------------------------------------------
 #
@@ -34,7 +47,9 @@ df = df.reset_index()
 df = pd.melt(df, value_vars = rows)
 
 # Replace inf with nearest even 10 to get them cleanly on the right side
-df = df.replace(np.inf, round(df.loc[df['value'] != np.inf, 'value'].max() * 0.11) * 10)
+#df['value'].where(df['value'] <= 150, np.inf, inplace = True)
+inf_value = round(df.loc[df['value'] != np.inf, 'value'].max() * 0.12) * 10
+df = df.replace(np.inf, inf_value)
 
 # Plot individual stimuli and means on the same image
 plt.interactive(True)
@@ -50,10 +65,14 @@ sns.stripplot(x = means, y = rows, jitter = 0., alpha = 0.75, size = 12,
 # Set labels, ticks and other visuals
 plt.grid(True, axis = 'x')
 plt.xlabel("Geodesic distance (mm)", fontsize = font)
-plt.ylabel("Averaged subjects", fontsize = font)
-plt.xticks([10, 20, 30, 40, 50, 60, 70, 80],
-           ["10", "20", "30", "40", "50", "60", "70", r"$\infty$"],
-           fontsize = font)
+plt.ylabel(ylabel, fontsize = font)
+start, end = fig.axes[0].get_xlim()
+ticks = np.arange(10, math.ceil(end/10)*10, math.ceil((end - start) / 70) * 10)
+fig.axes[0].xaxis.set_ticks(ticks)
+
+lbl = [str(tick) for tick in ticks]
+lbl[-1] = r"$\infty$"
+fig.axes[0].set_xticklabels(lbl)
 plt.yticks(fontsize = font)
 plt.tight_layout()
 
@@ -61,4 +80,4 @@ plt.tight_layout()
 fig.axes[0].get_xticklabels()[-1].set_fontsize(20)
 fig.axes[0].get_xaxis().get_major_ticks()[-1].set_pad(-1)
 
-plt.savefig(project_dir + 'geodesics.pdf')
+plt.savefig(project_dir + 'geodesics' + identifier + '.pdf')

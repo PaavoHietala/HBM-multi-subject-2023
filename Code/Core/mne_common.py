@@ -156,7 +156,7 @@ def compute_covariance_matrix(subject, project_dir, raw, overwrite = False):
         noise_cov.save(fpath)
         
 def morph_to_fsaverage(subject, project_dir, src_spacing, stc_method,
-                       task, stimuli, overwrite):
+                       task, stimuli, overwrite, suffix = None):
     '''
     Morph source estimates of given subjects to fsaverage mesh and save the
     morphed stcs in <project_dir>/Data/stc_m/
@@ -177,6 +177,8 @@ def morph_to_fsaverage(subject, project_dir, src_spacing, stc_method,
         List of stimuli for whcih the stcs are estimated.
     overwrite : bool, optional
         Overwrite existing files switch. The default is False.
+    suffix : str
+        Suffix to append to the end of the output filename.
 
     Returns
     -------
@@ -192,7 +194,8 @@ def morph_to_fsaverage(subject, project_dir, src_spacing, stc_method,
     stcs = {}
     for stimulus in stimuli:
         fname = get_fname(subject, 'stc', stc_method = stc_method,
-                          src_spacing=src_spacing, task = task, stim = stimulus)
+                          src_spacing=src_spacing, task = task, stim = stimulus,
+                          suffix = suffix)
         fpath = os.path.join(project_dir, 'Data', 'stc', fname)
         stcs[stimulus] = mne.read_source_estimate(fpath)
     
@@ -200,7 +203,8 @@ def morph_to_fsaverage(subject, project_dir, src_spacing, stc_method,
     for stim in stcs:
         print('Morphing ' + stim)
         fname_stc_m = get_fname(subject, 'stc_m', stc_method = stc_method,
-                                src_spacing = src_spacing, task = task, stim = stim)
+                                src_spacing = src_spacing, task = task,
+                                stim = stim, suffix = suffix)
         fpath_stc_m = os.path.join(project_dir, 'Data', 'stc_m', fname_stc_m)
         
         if overwrite or not os.path.isfile(fpath_stc_m + '-lh.stc'):

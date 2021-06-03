@@ -45,7 +45,8 @@ def reMTW_wrapper(fwds, evokeds, noise_covs, solver_kwargs):
                                  n_jobs = 15, stable=True, gpu = True,
                                  tol_ot=1e-4, max_iter_ot=20, tol=1e-4,
                                  max_iter=2000, positive=False, tol_reweighting = 1e-2,
-                                 max_iter_reweighting = 100, **solver_kwargs)
+                                 max_iter_reweighting = 100, ot_threshold = 1e-7,
+                                 **solver_kwargs)
 
     # Calculate average active source points over all subjects
     avg = 0
@@ -55,7 +56,7 @@ def reMTW_wrapper(fwds, evokeds, noise_covs, solver_kwargs):
 
     return (stcs, avg)
 
-def reMTW_param_plot(log, project_dir, param, stim, fname_id = ""):
+def reMTW_param_plot(log, project_dir, param, stim, suffix = ''):
     '''
     Plot active source points vs. alpha or beta.
 
@@ -69,8 +70,8 @@ def reMTW_param_plot(log, project_dir, param, stim, fname_id = ""):
         Plotted parameter, either 'alpha' or 'beta'.
     stim : str
         Stimulus name, e.g. 'sector21'.
-    fname_id : str
-        Additional string to append to the filename. Default is "".
+    suffix : str
+        Optional suffix to include in the filename
     
     Returns
     ----------
@@ -93,11 +94,11 @@ def reMTW_param_plot(log, project_dir, param, stim, fname_id = ""):
     ax.get_yaxis().set_major_formatter(ScalarFormatter())
 
     # Save
-    plt.savefig(project_dir + 'Data/plot/' + param + '_' + stim + fname_id + '.png')
+    plt.savefig(project_dir + 'Data/plot/' + param + '_' + stim + '_' + suffix + '.png')
     plt.close()
 
 def reMTW_save_params(project_dir, param_name, param_list, actives, sec_name,
-                      sec_value, stim, info = ''):
+                      sec_value, stim, suffix = '', info = ''):
     '''Save parameter log into a text file.
 
     Parameters
@@ -116,6 +117,8 @@ def reMTW_save_params(project_dir, param_name, param_list, actives, sec_name,
         Value of the secondary parameter.
     stim : str
         Name of the stimulus these values were acquired for.
+    suffix : str
+        Optional suffix to include in the filename
     info : str
         Additional info string to differentiate the log inputs. Default is ''.
     
@@ -124,7 +127,7 @@ def reMTW_save_params(project_dir, param_name, param_list, actives, sec_name,
     None.
     '''
 
-    with open(project_dir + 'Data/plot/' + stim + '.txt', 'a') as f:
+    with open(project_dir + 'Data/plot/' + stim + '_' + suffix + '.txt', 'a') as f:
         f.write(datetime.now().strftime("%D.%M.%Y %H:%M:%S") + " " + info + '\n')
         f.write(param_name + ' with ' + sec_name + '=' + str(sec_value) + ':\n')
         f.write(', '.join([str(value) for value in param_list]) + '\n')
@@ -173,7 +176,7 @@ def reMTW_search_step(current, log, history, param):
         return (log[-1] + log[-3]) / 2
 
 def reMTW_find_alpha(fwds, evokeds, noise_covs, stim, project_dir, solver_kwargs,
-                     info = ''):
+                     info = '', suffix = ''):
     '''
     Find alpha_max where the source estimate covers the whole cortex, a heuristic
     for optimal alpha is alpha_max / 2.
@@ -194,6 +197,8 @@ def reMTW_find_alpha(fwds, evokeds, noise_covs, stim, project_dir, solver_kwargs
         Additional parameters sent to the solver.
     info : str
         Additional info string to differentiate the log inputs. Default is ''.
+    suffix : str
+        Optional suffix to include in the filename
 
     Returns
     -------
@@ -251,15 +256,15 @@ def reMTW_find_alpha(fwds, evokeds, noise_covs, stim, project_dir, solver_kwargs
 
     # Print the result, save log in a file and plot active points vs alphas
     print("Got aMax=" + str(aMax))
-    reMTW_param_plot(log, project_dir, 'alphas', stim)
+    reMTW_param_plot(log, project_dir, 'alphas', stim, suffix = suffix)
     reMTW_save_params(project_dir, 'alpha', log['alphas'], log['actives'], 'beta',
-                      solver_kwargs['beta'], stim, info)
+                      solver_kwargs['beta'], stim, info = info, suffix = suffix)
 
     # Good heuristic for alpha is 0.5 * aMax
     return 0.5 * aMax
 
 def reMTW_find_beta(fwds, evokeds, noise_covs, stim, project_dir, target,
-                    solver_kwargs, info = ''):
+                    solver_kwargs, info = '', suffix = ''):
     '''
     Find beta where number of active source points is as close to the target
     as possible.
@@ -282,6 +287,8 @@ def reMTW_find_beta(fwds, evokeds, noise_covs, stim, project_dir, target,
         Additional parameters sent to the solver.
     info : str
         Additional info string to differentiate the log inputs. Default is ''.
+    suffix : str
+        Optional suffix to include in the filename
 
     Returns
     -------
@@ -320,7 +327,7 @@ def reMTW_find_beta(fwds, evokeds, noise_covs, stim, project_dir, target,
         except ValueError as e:
             print("Beta=" + str(solver_kwargs['beta']) + " caused an error (skipping):")
             print(e)
-            solver_kwargs['beta'] += 0.1 * solver_kwargs['beta']
+            solver_kwargs['beta'] -= 0.05 * solver_kwargs['beta']
             continue
 
         # Update log and history
@@ -339,6 +346,8 @@ def reMTW_find_beta(fwds, evokeds, noise_covs, stim, project_dir, target,
         # Find the next beta value to test
         solver_kwargs['beta'] = reMTW_search_step(solver_kwargs['beta'], log['betas'],
                                                   history, 'beta')
+        if solver_kwargs['beta'] < 0: solver_kwargs['beta'] = abs(solver_kwargs['beta'])   
+          
         print(log['betas'], log['actives'])
 
     # Select the beta with avg closest to the target
@@ -349,15 +358,35 @@ def reMTW_find_beta(fwds, evokeds, noise_covs, stim, project_dir, target,
     # Plot avg vs beta
     log['actives'] = [avg for alpha, avg in sorted(zip(log['betas'], log['actives']))]
     log['betas'].sort()
-    reMTW_param_plot(log, project_dir, 'betas', stim)
+    reMTW_param_plot(log, project_dir, 'betas', stim, suffix = suffix)
     reMTW_save_params(project_dir, 'beta', log['betas'], log['actives'], 'alpha',
-                      solver_kwargs['alpha'], stim, info)
+                      solver_kwargs['alpha'], stim, info = info, suffix = suffix)
 
     print("Got beta_=" + str(beta_))
     return (stcs_, beta_)
 
 def reMTW_tenplot_a(fwds, evokeds, noise_covs, stim, project_dir,
                     concomitant = False, beta = 0.3):
+    '''
+    Plot the relationship between alpha and average active sources at 11 points.
+
+    Parameters
+    ----------
+    fwds : list of mne.Forward
+        Forward models for each subject, preprocessed with groupmne.prepare_forwards().
+    evokeds : list of mne.Evoked
+        Sensor responses to the stimulus, one per subject.
+    noise_covs : list of mne.Covariance
+        Noise covariance matrices for each subject.
+    stim : str
+        Stimulus which is analyzed here, e.g. 'sector22'.
+    project_dir : str
+        Base directory of the project.
+    concomitant : bool, optional
+        Whether to use concomitant noise estimation or not, by default False
+    beta : float, optional
+        Beta used in the calculations, by default 0.3
+    '''
 
     log = dict(alphas = [], actives = [])
     
@@ -389,11 +418,32 @@ def reMTW_tenplot_a(fwds, evokeds, noise_covs, stim, project_dir,
     log['alphas'].sort()
 
     # Print the result, save log in a file and plot active points vs alphas
-    reMTW_param_plot(log, project_dir, 'alphas', stim, 'tenpoint')
-    reMTW_save_params(project_dir, 'alpha', log['alphas'], log['actives'], 'beta', solver_kwargs['beta'], stim)
+    reMTW_param_plot(log, project_dir, 'alphas', stim, suffix = 'tenpoint')
+    reMTW_save_params(project_dir, 'alpha', log['alphas'], log['actives'], 'beta',
+                      solver_kwargs['beta'], stim)
 
 def reMTW_tenplot_b(fwds, evokeds, noise_covs, stim, project_dir,
                     concomitant = False, alpha = 7.5):
+    '''
+    Plot the relationship between beta and average active sources at 11 points.
+
+    Parameters
+    ----------
+    fwds : list of mne.Forward
+        Forward models for each subject, preprocessed with groupmne.prepare_forwards().
+    evokeds : list of mne.Evoked
+        Sensor responses to the stimulus, one per subject.
+    noise_covs : list of mne.Covariance
+        Noise covariance matrices for each subject.
+    stim : str
+        Stimulus which is analyzed here, e.g. 'sector22'.
+    project_dir : str
+        Base directory of the project.
+    concomitant : bool, optional
+        Whether to use concomitant noise estimation or not, by default False
+    alpha : float, optional
+        Alpha used in the calculations, by default 7.5
+    '''
 
     log = dict(betas = [], actives = [])
     
@@ -423,5 +473,6 @@ def reMTW_tenplot_b(fwds, evokeds, noise_covs, stim, project_dir,
     log['betas'].sort()
 
     # Print the result, save log in a file and plot active points vs alphas
-    reMTW_param_plot(log, project_dir, 'betas', stim, 'tenpoint')
-    reMTW_save_params(project_dir, 'beta', log['betas'], log['actives'], 'alpha', solver_kwargs['alpha'], stim)
+    reMTW_param_plot(log, project_dir, 'betas', stim, suffix = 'tenpoint')
+    reMTW_save_params(project_dir, 'beta', log['betas'], log['actives'], 'alpha',
+                      solver_kwargs['alpha'], stim)

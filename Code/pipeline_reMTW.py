@@ -40,7 +40,7 @@ mne.set_config('SUBJECTS_DIR', subjects_dir)
 # List of subject names, subjects 1-24 available ex. those in exclude 
 
 exclude = [5, 8, 13, 15]
-subjects = ['MEGCI_S' + str(idx) for idx in list(range(1,25)) if idx not in exclude]
+subjects = ['MEGCI_S' + str(idx) for idx in list(range(1,20)) if idx not in exclude]
 
 # Source point spacing for source space calculation
 
@@ -60,7 +60,7 @@ task = 'f'
 
 # Which stimuli to analyze, sectors 1-24 available
 
-stimuli = ['sector' + str(num) for num in range(8,9)]
+stimuli = ['sector' + str(num) for num in range(1,25)]
 
 # List of raw rest files for covariance matrix and extracting sensor info
 
@@ -83,6 +83,8 @@ colors = ['mistyrose', 'plum', 'thistle', 'lightsteelblue', 'lightcyan', 'lightg
           'lightyellow', 'papayawhip', 'lightcoral', 'violet', 'mediumorchid', 'royalblue',
           'aqua', 'mediumspringgreen', 'khaki', 'navajowhite', 'red', 'purple',
           'blueviolet', 'blue', 'turquoise', 'lime', 'yellow', 'orange']
+colors_ecc = ['blue'] * 8 + ['yellow'] * 8 + ['red'] * 8
+colors_polar = ['cyan', 'indigo', 'violet', 'magenta', 'red', 'orange', 'yellow', 'green'] * 3
 
 # Overwrite existing files
 
@@ -94,17 +96,22 @@ bilaterals = ['sector3', 'sector7', 'sector11', 'sector15', 'sector19', 'sector2
 
 # How many active source point are we aiming for
 
-target = 3
+target = 2
 
-# An optional suffix to add to all filenames, not in use currently
+# Suffix to append to filenames, used to distinguish averages of N subjects
+# Expected format is len(subjects)< optional text>
 
-suffix = None
+suffix = str(len(subjects)) + 'subjects'
+
+# File containing V1 peak timings for each subject, if None start and stop times
+# will be used for all subjects
+
+timing_fpath = '/m/nbe/scratch/megci/MFinverse/Classic/Data/plot/V1_medians_evoked.csv'
 
 # Check CLI arguments, override other settings
 
 alpha = None
 beta = None
-target = 3
 tenplot = False
 start = 0.08
 stop = 0.08
@@ -131,6 +138,7 @@ for arg in sys.argv[1:]:
             stop = float(times[1])
         else:
             stop = start
+        timing_fpath = None
     elif arg.startswith('-suffix='):
         suffix = arg[8:]
     elif arg.startswith('-concomitant='):
@@ -142,18 +150,21 @@ for arg in sys.argv[1:]:
 
 ### Pipeline steps to run ------------------------------------------------------
 
-steps = {'prepare_directories' :        True,
+steps = {'prepare_directories' :        False,
          'compute_source_space' :       False,
          'restrict_src_to_label' :      False,
          'calculate_bem_solution' :     False,
          'calculate_forward_solution' : False,
          'compute_covariance_matrix' :  False,
-         'estimate_source_timecourse' : True,
+         'estimate_source_timecourse' : False,
          'morph_to_fsaverage' :         False,
          'average_stcs_source_space' :  False,
-         'label_peaks' :                False,
-         'expand_peak_labels' :         False,
-         'label_all_vertices' :         False}
+         'label_peaks' :                False, # Not really useful
+         'expand_peak_labels' :         False, # For intermediate plots only
+         'label_all_vertices' :         False, # Broken
+         'plot_eccentricity_foci' :     False,
+         'plot_polar_foci' :            False,
+         'tabulate_geodesics' :         True}
 
 ### Run the pipeline -----------------------------------------------------------
 
@@ -232,11 +243,35 @@ if steps['estimate_source_timecourse'] or tenplot == True:
     # Prepare forward operators for the inversion
     fwds = prepare_fwds(fwds_, src_ref, copy = False)
 
+    # Load V1 peak timing for all subjects
+    if timing_fpath != None:
+        timing = np.loadtxt(timing_fpath).tolist()
+
+        # Restrict timings only to selected subjects
+        [timing.insert(i - 1, 0) for i in exclude]
+        starts = [t for i, t in enumerate(timing) if str(i + 1)
+                  in [sub[7:] for sub in subjects]]
+        stops = starts.copy()
+        print('Loaded timings: ', starts)
+    else:
+        starts = [start] * len(subjects)
+        stops = [stop] * len(subjects)
+
     # Solve the inverse problem for each stimulus
     for stim in stimuli:
         print("Solving for stimulus " + stim)
         stim_idx = int("".join([i for i in stim if i in "1234567890"])) - 1
-        evokeds = [ev.crop(start, stop) for ev in evokeds[stim_idx]]
+        evokeds = [ev.crop(starts[i], stops[i]) for i, ev in enumerate(evokeds[stim_idx])]
+
+        # Change the Evoked timestamps from subject-specific to 0 to circumvent
+        # a limitation in GroupMNE inverse.py, line 77 if subject-specific timing
+        # is used
+        if len(set(starts)) > 1:
+            for ev in evokeds:
+                ev.times = np.array([0.])
+
+        print(starts, stops)
+        print(evokeds)
 
         info = '-'.join([src_spacing, "subjects=" + str(len(subjects)), task, stim,
                         "target=" + str(target)])
@@ -245,8 +280,8 @@ if steps['estimate_source_timecourse'] or tenplot == True:
             target *= 2
 
         if tenplot == True:
-            #reMTW.reMTW_tenplot_a(fwds, evokeds, noise_covs, stim, project_dir,
-            #                      concomitant = concomitant, beta = beta)
+            reMTW.reMTW_tenplot_a(fwds, evokeds, noise_covs, stim, project_dir,
+                                  concomitant = concomitant, beta = beta)
             reMTW.reMTW_tenplot_b(fwds, evokeds, noise_covs, stim, project_dir,
                                   concomitant = concomitant, alpha = alpha)
             continue
@@ -254,20 +289,22 @@ if steps['estimate_source_timecourse'] or tenplot == True:
         solvers.group_inversion(subjects, project_dir, src_spacing, stc_method,
                                 task, stim, fwds, evokeds, noise_covs, target,
                                 overwrite, concomitant = concomitant, alpha = alpha,
-                                beta = beta, info = info)
+                                beta = beta, info = info, suffix = suffix)
 
 # Morph subject data to fsaverage
 if steps['morph_to_fsaverage']:
     print('morphing to fsaverage')
     for subject in subjects:
         mne_common.morph_to_fsaverage(subject, project_dir, src_spacing,
-                                      stc_method, task, stimuli, overwrite)
+                                      stc_method, task, stimuli, overwrite,
+                                      suffix = suffix)
 
 # Average data from all subjects for selected task and stimuli
 if steps['average_stcs_source_space']:
     print('Averaging stcs in source space')
     utils.average_stcs_source_space(subjects, project_dir, src_spacing, stc_method,
-                                    task, stimuli, overwrite)
+                                    task, stimuli, overwrite = overwrite,
+                                    suffix = suffix)
     
 # Select peaks from all averaged stimuli and plot on fsaverage
 if steps['label_peaks']:
@@ -284,3 +321,21 @@ if steps['expand_peak_labels']:
 if steps['label_all_vertices']:
     visualize.label_all_vertices(subjects, project_dir, src_spacing, stc_method,
                                  task, stimuli, colors, overwrite)
+
+# Plot all stimulus peaks on fsaverage LH and RH, color based on 3-ring eccentricity
+if steps['plot_eccentricity_foci']:
+    visualize.plot_foci(project_dir, src_spacing, stc_method, task, stimuli,
+                        colors_ecc, bilaterals, suffix, 'ecc', overwrite,
+                        subject = 'MEGCI_S1', stc_type = 'stc_m')
+
+# Plot all stimulus peaks on fsaverage LH and RH, color based on wedge
+if steps['plot_polar_foci']:
+    visualize.plot_foci(project_dir, src_spacing, stc_method, task, stimuli,
+                        colors_polar, bilaterals, suffix, 'polar', overwrite,
+                        subject = 'MEGCI_S1', stc_type = 'stc_m')
+
+# Tabulate geodesic distances between peaks and V1 on 1-20 averaged subjects
+if steps['tabulate_geodesics']:
+    utils.tabulate_geodesics(project_dir, src_spacing, stc_method, task, stimuli,
+                             bilaterals, suffix, overwrite, counts = [1, 5, 10, 15, 20])#,
+                             #subject = 'MEGCI_S1', mode = 'stc')
