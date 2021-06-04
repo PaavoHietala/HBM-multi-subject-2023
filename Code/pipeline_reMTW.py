@@ -40,7 +40,7 @@ mne.set_config('SUBJECTS_DIR', subjects_dir)
 # List of subject names, subjects 1-24 available ex. those in exclude 
 
 exclude = [5, 8, 13, 15]
-subjects = ['MEGCI_S' + str(idx) for idx in list(range(1,20)) if idx not in exclude]
+subjects = ['MEGCI_S' + str(idx) for idx in list(range(1,2)) if idx not in exclude]
 
 # Source point spacing for source space calculation
 
@@ -325,14 +325,14 @@ if steps['label_all_vertices']:
 # Plot all stimulus peaks on fsaverage LH and RH, color based on 3-ring eccentricity
 if steps['plot_eccentricity_foci']:
     visualize.plot_foci(project_dir, src_spacing, stc_method, task, stimuli,
-                        colors_ecc, bilaterals, suffix, 'ecc', overwrite,
-                        subject = 'MEGCI_S1', stc_type = 'stc_m')
+                        colors_ecc, bilaterals, suffix, 'ecc', overwrite)
+                        #subject = 'MEGCI_S1', stc_type = 'stc_m')
 
 # Plot all stimulus peaks on fsaverage LH and RH, color based on wedge
 if steps['plot_polar_foci']:
     visualize.plot_foci(project_dir, src_spacing, stc_method, task, stimuli,
-                        colors_polar, bilaterals, suffix, 'polar', overwrite,
-                        subject = 'MEGCI_S1', stc_type = 'stc_m')
+                        colors_polar, bilaterals, suffix, 'polar', overwrite)
+                        #subject = 'MEGCI_S1', stc_type = 'stc_m')
 
 # Tabulate geodesic distances between peaks and V1 on 1-20 averaged subjects
 if steps['tabulate_geodesics']:

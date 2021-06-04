@@ -148,14 +148,16 @@ def average_stcs_source_space(subjects, project_dir, src_spacing, stc_method,
             # Set the first stc as base and add all others to it, divide by n
             if timing == None:
                 avg = stcs[0].copy()
+                avg.data = abs(avg.data)
                 for i in range(1, len(subjects)):
-                    avg.data += stcs[i].data
+                    avg.data += abs(stcs[i].data)
             else:
                 avg = stcs[0].crop(tmin = timing[0], tmax = timing[0],
                                    include_tmax = True).copy()
+                avg.data = abs(avg.data)
                 for i in range(1, len(subjects)):
-                    avg.data += stcs[i].crop(tmin = timing[i], tmax = timing[i],
-                                             include_tmax = True).data
+                    avg.data += abs(stcs[i].crop(tmin = timing[i], tmax = timing[i],
+                                                 include_tmax = True).data)
             avg.data = avg.data / len(subjects)
             
             # Save to disk
