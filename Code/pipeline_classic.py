@@ -28,7 +28,7 @@ mne.set_config('SUBJECTS_DIR', subjects_dir)
 # List of subject names
 
 exclude = [5, 8, 13, 15]
-subjects = ['MEGCI_S' + str(idx) for idx in list(range(1,25)) if idx not in exclude]
+subjects = ['MEGCI_S' + str(idx) for idx in list(range(1,2)) if idx not in exclude]
 
 # Source point spacing for source space calculation
 
@@ -100,13 +100,13 @@ steps = {'prepare_directories' :        False,
          'compute_covariance_matrix' :  False,
          'construct_inverse_operator' : False,
          'estimate_source_timecourse' : False,
-         'morph_to_fsaverage' :         False,
-         'average_stcs_source_space' :  True,
+         'morph_to_fsaverage' :         True,
+         'average_stcs_source_space' :  False,
          'label_peaks' :                False, # Not really useful
          'expand_peak_labels' :         False, # For intermediate plots only
          'label_all_vertices' :         False, # Broken
-         'plot_eccentricity_foci' :     True,
-         'plot_polar_foci' :            True,
+         'plot_eccentricity_foci' :     False,
+         'plot_polar_foci' :            False,
          'tabulate_geodesics' :         False} 
 
 

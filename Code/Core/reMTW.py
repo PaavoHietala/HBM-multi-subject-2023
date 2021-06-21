@@ -157,7 +157,7 @@ def reMTW_search_step(current, log, history, param):
     '''
 
     if history[0] == history[1] and history[1] == history[2]:
-        # Strolling a plateau, take a jump to get near the gradient faster
+        # Strolling on flat land, take a jump to get near the gradient faster
         if history[2] == 'small':
             if param == 'alpha':
                 return current * 5
@@ -243,6 +243,7 @@ def reMTW_find_alpha(fwds, evokeds, noise_covs, stim, project_dir, solver_kwargs
         print(log)
 
     # Find the elbow = the highest gradient as alpha_max
+    # Sort actives based on alphas, then sort alphas alone to get the same order
     log['actives'] = [avg for alpha, avg in sorted(zip(log['alphas'], log['actives']))]
     log['alphas'].sort()
 
@@ -356,6 +357,7 @@ def reMTW_find_beta(fwds, evokeds, noise_covs, stim, project_dir, target,
     stcs_ = log['stcs'][beta_idx]
 
     # Plot avg vs beta
+    # Sort actives based on beta, then sort beta to get the same order there
     log['actives'] = [avg for alpha, avg in sorted(zip(log['betas'], log['actives']))]
     log['betas'].sort()
     reMTW_param_plot(log, project_dir, 'betas', stim, suffix = suffix)

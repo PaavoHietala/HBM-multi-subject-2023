@@ -13,11 +13,11 @@ Created on Fri Jan 29 14:55:32 2021
 import mne
 
 ROOT_DIR = "/m/nbe/scratch/megci/data/"
-EVOKED_DIR = "/m/nbe/scratch/megci/MFinverse/Data/Evoked/"
+EVOKED_DIR = "/m/nbe/scratch/megci/MFinverse/Classic/Data/Evoked/"
 RESULT_DIR = "/m/nbe/scratch/megci/MFinverse/"
 
 mne.set_config("SUBJECTS_DIR", ROOT_DIR + 'FS_Subjects_MEGCI/')
-subject = 'MEGCI_S11'
+subject = 'MEGCI_S1'
 
 raw = ROOT_DIR + 'MEG/megci_rawdata_mc_ic/' + subject.lower() + '_mc/run4_raw_tsss_mc_transOHP_blinkICremoved.fif'
 rest = ROOT_DIR + 'MEG/megci_rawdata_mc_ic/' + subject.lower() + '_mc/rest1_raw_tsss_mc_transOHP_blinkICremoved.fif'
@@ -27,8 +27,8 @@ evoked = mne.read_evokeds(EVOKED_DIR + subject + '_f-ave.fif')
 #%% Visualize MRI and MEG alignment
 
 trans = ROOT_DIR + 'FS_Subjects_MEGCI/' + subject + '/mri/T1-neuromag/sets/COR-ahenriks.fif'
-mne.viz.plot_alignment(evoked[0].info, trans, dig=True, meg=["helmet", "sensors"],
-                       subjects_dir = mne.get_config("SUBJECTS_DIR"), subject = subject)
+mne.viz.plot_alignment(evoked[0].info, trans, dig=False, meg=["helmet", "sensors"],
+                       subjects_dir = mne.get_config("SUBJECTS_DIR"), subject = subject, surfaces = {'brain' : 0, 'head' : 1})
 
 #%% Compute source space
 spacing = 'oct6'

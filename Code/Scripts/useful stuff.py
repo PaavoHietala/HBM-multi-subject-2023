@@ -19,9 +19,9 @@ import groupmne
 
 #%%
 
-stc = mne.read_source_estimate('/m/nbe/scratch/megci/MFinverse/Classic/Data/stc/MEGCI_S24-ico4-eLORETA-f-sector21-lh.stc')
+stc = mne.read_source_estimate('/m/nbe/scratch/megci/MFinverse/Classic/Data/avg/fsaverage-ico4-eLORETA-f-sector15-20subjects-lh.stc')
 
-b = stc.plot('MEGCI_S24', 'inflated','lh')
+b = stc.plot('MEGCI_S1', 'inflated','lh', background = 'white')
 
 # b = mne.viz.Brain('MEGCI_S1', 'lh', 'inflated', show = False)
 # b.add_data(stc)

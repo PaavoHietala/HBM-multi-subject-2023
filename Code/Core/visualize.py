@@ -111,7 +111,7 @@ def plot_foci(project_dir, src_spacing, stc_method, task, stimuli, colors,
     '''
     
     title = ' '.join([stc_method, suffix, 'average', mode, subject, stc_type])
-    brain = mne.viz.Brain((subject if mode == 'stc' else 'fsaverage'),
+    brain = mne.viz.Brain((subject if stc_type == 'stc' else 'fsaverage'),
                           'split', 'inflated', title = title,
                           background = (255, 255, 255), size = (1000, 600),
                           show = False)
@@ -132,7 +132,7 @@ def plot_foci(project_dir, src_spacing, stc_method, task, stimuli, colors,
     for hemi_id, hemi in enumerate(['lh', 'rh']):
         # Label V1 on the cortex
         v1 = mne.read_label('/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/'
-                            + (subject if mode == 'stc' else 'fsaverage')
+                            + (subject if stc_type == 'stc' else 'fsaverage')
                             + '/label/' + hemi + '.V1_exvivo.label',
                             (subject if mode == 'stc' else 'fsaverage'))
         brain.add_label(v1, borders = 2)

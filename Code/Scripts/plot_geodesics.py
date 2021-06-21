@@ -88,7 +88,10 @@ def geo_plot(inputf, title, ylabel, outputf, rows):
     sns.stripplot(x = df['value'], y = df['variable'], jitter = 0.25,
                 alpha = 0.5, size = 6)
 
-    medians = np.median(np.ma.masked_invalid(dist), axis = 1).data
+    dist[dist == np.inf] = np.nan
+    dist[dist >= 100] = np.nan
+    medians = np.nanmedian(dist, axis = 1)
+    print(medians)
     sns.stripplot(x = medians, y = rows, jitter = 0., alpha = 0.75, size = 12,
                 marker = "P", linewidth = 1.5)
 
@@ -132,16 +135,21 @@ def stats(inputfs, statf, rows, titles):
     '''
 
     stats = []
+    infs = []
 
     # Load all inputfs to one 3D list
     for f in inputfs:
         dist = np.loadtxt(f, delimiter = ',')
+        dist[dist == np.inf] = np.nan
+        dist[dist >= 100] = np.nan
 
-        medians = np.median(np.ma.masked_invalid(dist), axis = 1).data
-        means = np.mean(np.ma.masked_invalid(dist), axis = 1).data
-        stds = np.std(np.ma.masked_invalid(dist), axis = 1).data
+        medians = np.nanmedian(dist, axis = 1)
+        means = np.nanmean(dist, axis = 1)
+        stds = np.nanstd(dist, axis = 1)
+        inf = np.count_nonzero(np.isnan(dist), axis = 1)
 
-        stats.append([medians, means, stds])
+        stats.append([means, medians, stds])
+        infs.append(inf)
     
     # Fit the stats list to numpy array, one row in numpy = one row in table
     # One row consist of mean, median, std * len(inputfs)
@@ -152,20 +160,31 @@ def stats(inputfs, statf, rows, titles):
             for stat_i in range(3):
                 stat_arr[row_i, file_i * 3 + stat_i] = round(stats[file_i][stat_i][row_i], 1)
 
-    # Write a latex-ready table of the data
+    # Write a latex-ready table of the mean, median, std data and another table
+    # to same file with inf
     with open(statf, 'w+') as f:
         f.write('\\begin{center}\n\\begin{tabular}{ |c|c|c|c|c|c|c|c|c|c| }\n')
-        f.write('\\hline\n & ' + ' & '.join(['\\multicolumn{3}{|c|}{'
+        f.write('\\cline{2-10}\n \multicolumn{1}{c|}{} & '
+                + ' & '.join(['\\multicolumn{3}{|c|}{'
                 + t.replace('&', '\\&') + '}' for t in titles]) + '\\\\')
-        f.write('\n\\hline\n $N$ & ' + ' & '.join(['mean', 'median', 'std'] * 3)
+        f.write('\n\\hline\n $N$ & ' + ' & '.join(['mean', 'mdn', 'std'] * 3)
                 + '\\\\' + '\n\\hline\n')
         for row_i, row in enumerate(rows):
             f.write('& '.join([row] + [str(i) for i in stat_arr[row_i].tolist()]) + '\\\\\n')
-        f.write('\\hline\n\\end{tabular}\n\\end{center}')
+        f.write('\\hline\n\\end{tabular}\n\\end{center}\n\n')
+
+        # inf table
+        f.write('\\begin{center}\n\\begin{tabular}{' + '|c' * (len(rows) + 1) + '| }\n')
+        f.write('\\hline\n $N$ & ' + ' & '.join(rows) + '\\\\\n\hline\n')
+        for row_i, row in enumerate(infs):
+            f.write(titles[row_i].replace('&', '\\&') + ' & '
+                    + ' & '.join([str(r) for r in row]) + '\\\\\n')
+        f.write('\\hline\n\\end{tabular}\n\\end{center}\n')   
 
 # Plot geodesic distances
 for inputf, title, ylabel, outputf, rows in zip(inputfs, titles, ylabels,
                                                 outputfs, [rows] * 3):
+    #continue
     geo_plot(inputf, title, ylabel, outputf, rows)
 
 # Output stats in a latex-table

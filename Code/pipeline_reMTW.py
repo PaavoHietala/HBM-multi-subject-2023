@@ -28,56 +28,65 @@ print(datetime.now().strftime("%D.%M.%Y %H:%M:%S"),
 
 ### Parameters -----------------------------------------------------------------
 
-# Root data directory of the project
+# Root data directory of the project, str
 
 project_dir = '/m/nbe/scratch/megci/MFinverse/reMTW/'
 
-# Subjects' MRI location
+# Subjects' MRI location, str
 
 subjects_dir = '/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/'
 mne.set_config('SUBJECTS_DIR', subjects_dir)
 
-# List of subject names, subjects 1-24 available ex. those in exclude 
+# List of subject names, subjects 1-24 available ex. those in exclude,
+# list of str 
 
 exclude = [5, 8, 13, 15]
-subjects = ['MEGCI_S' + str(idx) for idx in list(range(1,2)) if idx not in exclude]
+subjects = ['MEGCI_S' + str(idx) for idx in list(range(1,25)) if idx not in exclude]
 
-# Source point spacing for source space calculation
+# Get foci and geodesics results from individual subject instead of average,
+# str or None
+
+solo_subject = 'MEGCI_S1'
+
+# Source point spacing for source space calculation, str
 
 src_spacing = 'ico4'
 
-# Which BEM model to use for forward solution, <subject name> + <bem_suffix>.fif
+# Which BEM model to use for forward solution,
+# <subject name> + <bem_suffix>.fif, str
 
 bem_suffix = '-1-shell-bem-sol'
 
-# Which inversion method to use for source activity estimate
+# Which inversion method to use for source activity estimate,
+# only remtw tested, str
 
 stc_method = 'remtw'
 
-# Which task is currently investigated
+# Which task is currently investigated, str
 
 task = 'f'
 
-# Which stimuli to analyze, sectors 1-24 available
+# Which stimuli to analyze, sectors 1-24 available, list of str
 
 stimuli = ['sector' + str(num) for num in range(1,25)]
 
-# List of raw rest files for covariance matrix and extracting sensor info
+# List of raw rest files for covariance matrix and extracting sensor info,
+# list of str
 
 rest_raws = ['/m/nbe/scratch/megci/data/MEG/megci_rawdata_mc_ic/' + subject.lower()
              + '_mc/rest1_raw_tsss_mc_transOHP_blinkICremoved.fif' for subject in subjects]
 
-# List of MEG/MRI coregistration files for forward solution
+# List of MEG/MRI coregistration files for forward solution, list of str
 
 coreg_files = ['/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/' + subject + 
                '/mri/T1-neuromag/sets/COR-ahenriks.fif' for subject in subjects]
 
-# List of evoked response files for source activity estimate
+# List of evoked response files for source activity estimate, list of str
 
 evoked_files = ['/m/nbe/scratch/megci/MFinverse/reMTW/Data/Evoked/' + subject
                 + '_f-ave.fif' for subject in subjects]
 
-# List of colors for each stimulus label
+# List of matplotlib colors for each stimulus label, list of str
 
 colors = ['mistyrose', 'plum', 'thistle', 'lightsteelblue', 'lightcyan', 'lightgreen',
           'lightyellow', 'papayawhip', 'lightcoral', 'violet', 'mediumorchid', 'royalblue',
@@ -86,27 +95,32 @@ colors = ['mistyrose', 'plum', 'thistle', 'lightsteelblue', 'lightcyan', 'lightg
 colors_ecc = ['blue'] * 8 + ['yellow'] * 8 + ['red'] * 8
 colors_polar = ['cyan', 'indigo', 'violet', 'magenta', 'red', 'orange', 'yellow', 'green'] * 3
 
-# Overwrite existing files
+# Overwrite existing files, bool
 
 overwrite = True
 
-# List of stimuli that should show response on both hemispheres:
+# List of stimuli that should show response on both hemispheres, list of str
 
 bilaterals = ['sector3', 'sector7', 'sector11', 'sector15', 'sector19', 'sector23']
 
-# How many active source point are we aiming for
+# How many active source point are we aiming for, int
 
 target = 2
 
 # Suffix to append to filenames, used to distinguish averages of N subjects
-# Expected format is len(subjects)< optional text>
+# Expected format is len(subjects)< optional text>, str
 
 suffix = str(len(subjects)) + 'subjects'
 
 # File containing V1 peak timings for each subject, if None start and stop times
-# will be used for all subjects
+# will be used for all subjects, str or None
 
 timing_fpath = '/m/nbe/scratch/megci/MFinverse/Classic/Data/plot/V1_medians_evoked.csv'
+
+# Averaged subject counts for which the geodesic distances are tabulated,
+# list of int
+
+counts = [1, 5, 10, 15, 20]
 
 # Check CLI arguments, override other settings
 
@@ -152,7 +166,7 @@ for arg in sys.argv[1:]:
 
 steps = {'prepare_directories' :        False,
          'compute_source_space' :       False,
-         'restrict_src_to_label' :      False,
+         'restrict_src_to_label' :      False, # Not working, MWE needs continuous surfs
          'calculate_bem_solution' :     False,
          'calculate_forward_solution' : False,
          'compute_covariance_matrix' :  False,
@@ -324,18 +338,32 @@ if steps['label_all_vertices']:
 
 # Plot all stimulus peaks on fsaverage LH and RH, color based on 3-ring eccentricity
 if steps['plot_eccentricity_foci']:
-    visualize.plot_foci(project_dir, src_spacing, stc_method, task, stimuli,
-                        colors_ecc, bilaterals, suffix, 'ecc', overwrite)
-                        #subject = 'MEGCI_S1', stc_type = 'stc_m')
+    if solo_subject == None:
+        visualize.plot_foci(project_dir, src_spacing, stc_method, task, stimuli,
+                            colors_ecc, bilaterals, suffix, 'ecc', overwrite)
+    else:
+        visualize.plot_foci(project_dir, src_spacing, stc_method, task, stimuli,
+                            colors_ecc, bilaterals, suffix, 'ecc', overwrite,
+                            subject = solo_subject, stc_type = 'stc_m')
 
 # Plot all stimulus peaks on fsaverage LH and RH, color based on wedge
 if steps['plot_polar_foci']:
-    visualize.plot_foci(project_dir, src_spacing, stc_method, task, stimuli,
-                        colors_polar, bilaterals, suffix, 'polar', overwrite)
-                        #subject = 'MEGCI_S1', stc_type = 'stc_m')
+    if solo_subject == None:
+        visualize.plot_foci(project_dir, src_spacing, stc_method, task, stimuli,
+                            colors_polar, bilaterals, suffix, 'polar', overwrite)
+    else:
+        visualize.plot_foci(project_dir, src_spacing, stc_method, task, stimuli,
+                            colors_polar, bilaterals, suffix, 'polar', overwrite,
+                            subject = solo_subject, stc_type = 'stc_m')
 
 # Tabulate geodesic distances between peaks and V1 on 1-20 averaged subjects
 if steps['tabulate_geodesics']:
-    utils.tabulate_geodesics(project_dir, src_spacing, stc_method, task, stimuli,
-                             bilaterals, suffix, overwrite, counts = [1, 5, 10, 15, 20])#,
-                             #subject = 'MEGCI_S1', mode = 'stc')
+    if solo_subject == None:
+        utils.tabulate_geodesics(project_dir, src_spacing, stc_method, task,
+                                stimuli, bilaterals, suffix, overwrite,
+                                counts = counts)
+    else:
+        utils.tabulate_geodesics(project_dir, src_spacing, stc_method, task,
+                                stimuli, bilaterals, suffix, overwrite,
+                                counts = counts, subject = 'MEGCI_S1',
+                                mode = 'stc')
