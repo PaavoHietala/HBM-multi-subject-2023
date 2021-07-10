@@ -73,7 +73,7 @@ def label_peaks(subjects, project_dir, src_spacing, stc_method, task, stimuli,
 
 def plot_foci(project_dir, src_spacing, stc_method, task, stimuli, colors,
               bilaterals, suffix, mode, overwrite, subject = 'fsaverage',
-              stc_type = 'avg'):
+              stc_type = 'avg', time = None):
     '''
     Plot foci bubbles on fsaverage brain. Eccentricity and angle can be controlled
     with colors parameter
@@ -104,6 +104,8 @@ def plot_foci(project_dir, src_spacing, stc_method, task, stimuli, colors,
         Name of the subject the stc is for, defaults to fsaverage
     stc_type : str
         Type of stc, can be either stc, stc_m or avg. Defaults to avg
+    time : float
+        A timepoint for which to get the peak. If None, overall peak is used.
 
     Returns
     -------
@@ -123,7 +125,7 @@ def plot_foci(project_dir, src_spacing, stc_method, task, stimuli, colors,
 
     peaks, peak_hemis = find_peaks(project_dir, src_spacing, stc_method, task,
                                    stimuli, bilaterals, suffix, subject = subject,
-                                   mode = stc_type)
+                                   mode = stc_type, time = time)
     
     stimuli = copy.deepcopy(stimuli)
     [stimuli.insert(i, stimuli[i]) for i in bilateral_idx[::-1]]

@@ -9,7 +9,8 @@ Created on Tue March 30 15:22:35 2021
 '''
 
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timedelta
+from timeit import default_timer as timer
 import matplotlib.pyplot as plt
 from matplotlib.ticker import ScalarFormatter
 from groupmne import compute_group_inverse
@@ -40,6 +41,7 @@ def reMTW_wrapper(fwds, evokeds, noise_covs, solver_kwargs):
     '''
 
     # Calculate inverse solutions with groupmne's reMTW
+    start = timer()
     stcs = compute_group_inverse(fwds, evokeds, noise_covs, method = 'remtw',
                                  spatiotemporal = False,
                                  n_jobs = 15, stable=True, gpu = True,
@@ -47,6 +49,8 @@ def reMTW_wrapper(fwds, evokeds, noise_covs, solver_kwargs):
                                  max_iter=2000, positive=False, tol_reweighting = 1e-2,
                                  max_iter_reweighting = 100, ot_threshold = 1e-7,
                                  **solver_kwargs)
+    stop = timer()
+    print("Solved in " + str(timedelta(seconds = (stop - start))))
 
     # Calculate average active source points over all subjects
     avg = 0

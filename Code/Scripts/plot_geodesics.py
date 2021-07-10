@@ -25,13 +25,13 @@ basedir = '/m/nbe/scratch/megci/MFinverse/'
 # List of geodesic distance input files to plot
 
 inputfs = [basedir + 'Classic/Data/plot/distances.csv',
-           basedir + 'reMTW/Data/plot/distances_MEGCI_S1_stc.csv',
+           basedir + 'reMTW/Data/plot/distances_MEGCI_S1_stc_m.csv',
            basedir + 'reMTW/Data/plot/distances_fsaverage_avg.csv']
 
 # List of output files (graphs)
 
 outputfs = [basedir + 'Classic/Data/plot/geodesics_eLORETA.pdf',
-           basedir + 'reMTW/Data/plot/geodesics_MEGCI_S1_stc.pdf',
+           basedir + 'reMTW/Data/plot/geodesics_MEGCI_S1_stc_m.pdf',
            basedir + 'reMTW/Data/plot/geodesics_fsaverage_avg.pdf']
 
 # List of latex table output files (mean/median/std statistics)
@@ -85,6 +85,8 @@ def geo_plot(inputf, title, ylabel, outputf, rows):
     plt.interactive(True)
     fig = plt.figure(figsize = (3,4))
 
+    # Set seed to get same jitter every time
+    np.random.seed(1893)
     sns.stripplot(x = df['value'], y = df['variable'], jitter = 0.25,
                 alpha = 0.5, size = 6)
 
@@ -92,6 +94,7 @@ def geo_plot(inputf, title, ylabel, outputf, rows):
     dist[dist >= 100] = np.nan
     medians = np.nanmedian(dist, axis = 1)
     print(medians)
+    
     sns.stripplot(x = medians, y = rows, jitter = 0., alpha = 0.75, size = 12,
                 marker = "P", linewidth = 1.5)
 

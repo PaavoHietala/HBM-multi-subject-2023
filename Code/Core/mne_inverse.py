@@ -98,9 +98,10 @@ def estimate_source_timecourse(subject, project_dir, raw, src_spacing, stc_metho
     
     evokeds = mne.read_evokeds(fname_evokeds)
     
-    # Calculate stc for each evoked response individually
-    for idx, evoked in enumerate(evokeds):
-        stim = stimuli[idx]
+    # Calculate stc for each stimulus response individually
+    for idx, stim in enumerate(stimuli):
+        # Evokeds has sectors 1-24 but stimuli might not, pick based on stim number
+        evoked = evokeds[int(stim[6:]) - 1]
 
         fname_stc = get_fname(subject, 'stc', src_spacing = src_spacing,
                               stc_method = stc_method, task = task, stim=stim)

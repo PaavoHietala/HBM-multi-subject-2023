@@ -43,10 +43,10 @@ mne.set_config('SUBJECTS_DIR', subjects_dir)
 exclude = [5, 8, 13, 15]
 subjects = ['MEGCI_S' + str(idx) for idx in list(range(1,25)) if idx not in exclude]
 
-# Get foci and geodesics results from individual subject instead of average,
-# str or None
+# Get foci and geodesics results from individual subject instead of average if
+# this value is set to str instead of None. None produces average results.
 
-solo_subject = 'MEGCI_S1'
+solo_subject = None#'MEGCI_S1'
 
 # Source point spacing for source space calculation, str
 
@@ -170,15 +170,15 @@ steps = {'prepare_directories' :        False,
          'calculate_bem_solution' :     False,
          'calculate_forward_solution' : False,
          'compute_covariance_matrix' :  False,
-         'estimate_source_timecourse' : False,
-         'morph_to_fsaverage' :         False,
-         'average_stcs_source_space' :  False,
+         'estimate_source_timecourse' : True,
+         'morph_to_fsaverage' :         True,
+         'average_stcs_source_space' :  True,
          'label_peaks' :                False, # Not really useful
          'expand_peak_labels' :         False, # For intermediate plots only
          'label_all_vertices' :         False, # Broken
          'plot_eccentricity_foci' :     False,
          'plot_polar_foci' :            False,
-         'tabulate_geodesics' :         True}
+         'tabulate_geodesics' :         False}
 
 ### Run the pipeline -----------------------------------------------------------
 
@@ -365,5 +365,5 @@ if steps['tabulate_geodesics']:
     else:
         utils.tabulate_geodesics(project_dir, src_spacing, stc_method, task,
                                 stimuli, bilaterals, suffix, overwrite,
-                                counts = counts, subject = 'MEGCI_S1',
-                                mode = 'stc')
+                                counts = counts, subject = solo_subject,
+                                mode = 'stc_m')

@@ -143,6 +143,7 @@ def average_stcs_source_space(subjects, project_dir, src_spacing, stc_method,
                                     stim = stim,
                                     suffix = (suffix if stc_method == 'remtw' else None))
                 fpath_m = os.path.join(project_dir, 'Data', 'stc_m', fname_m)
+                print(fpath_m)
                 stcs.append(mne.read_source_estimate(fpath_m))
             
             # Set the first stc as base and add all others to it, divide by n
@@ -210,7 +211,8 @@ def restrict_src_to_label(subject, project_dir, src_spacing, overwrite, labels):
         src.save(fpath, overwrite = True)
 
 def find_peaks(project_dir, src_spacing, stc_method, task, stimuli, bilaterals,
-               suffix, return_index = False, subject = 'fsaverage', mode = 'avg'):
+               suffix, return_index = False, subject = 'fsaverage', mode = 'avg',
+               stc = None, time = None):
     '''
     Find peak indices and hemispheres for averaged stc files
 
@@ -236,6 +238,10 @@ def find_peaks(project_dir, src_spacing, stc_method, task, stimuli, bilaterals,
         Name of the subject the stc is for, defaults to fsaverage
     mode : str
         Type of stc, can be either stc, stc_m or avg. Defaults to avg
+    stc : mne.SourceEstimate
+        If source estimate is given, skip loading it again.
+    time : float
+        A timepoint for which to get the peak. If None, overall peak is used.
     
     Returns
     -------
@@ -249,19 +255,25 @@ def find_peaks(project_dir, src_spacing, stc_method, task, stimuli, bilaterals,
     peak_hemis = []
 
     for stim in stimuli:
-        fname = get_fname(('fsaverage' if mode == 'avg' else subject),
-                          ('stc_m' if mode == 'stc_m' else 'stc'),
-                          stc_method = stc_method, src_spacing = src_spacing,
-                          task = task, stim = stim, suffix = suffix)
-        fpath = os.path.join(project_dir, 'Data', mode, fname)
-        stc = mne.read_source_estimate(fpath)
+        if stc == None:
+            fname = get_fname(('fsaverage' if mode == 'avg' else subject),
+                            ('stc_m' if mode == 'stc_m' else 'stc'),
+                            stc_method = stc_method, src_spacing = src_spacing,
+                            task = task, stim = stim, suffix = suffix)
+            fpath = os.path.join(project_dir, 'Data', mode, fname)
+            print('Reading ' + fpath)
+            stc = mne.read_source_estimate(fpath)
+        
+        if time != None and stc.data.shape[1] > 1:
+            stc.crop(tmin = time, tmax = time)
         
         if stim not in bilaterals:
             # Not bilateral; get global peak and store it in peaks and hemis
-            if np.max(stc.lh_data) > np.max(stc.rh_data):
+            if np.max(abs(stc.lh_data)) > np.max(abs(stc.rh_data)):
                 hemi = 'lh'
             else:
                 hemi = 'rh'
+            print(stc.get_peak(hemi = hemi, vert_as_index = return_index))
             peaks.append(stc.get_peak(hemi = hemi, vert_as_index = return_index)[0])
             peak_hemis.append(hemi)
         else:
@@ -269,6 +281,8 @@ def find_peaks(project_dir, src_spacing, stc_method, task, stimuli, bilaterals,
             peaks.append(stc.get_peak(hemi = 'lh', vert_as_index = return_index)[0])
             peaks.append(stc.get_peak(hemi = 'rh', vert_as_index = return_index)[0])
             peak_hemis += ['lh', 'rh']
+        
+        stc = None
     
     return (peaks, peak_hemis)
 
@@ -281,11 +295,17 @@ def tabulate_geodesics(project_dir, src_spacing, stc_method, task, stimuli,
 
     # Load V1 labels and source space with distances
     v1_lh = mne.read_label('/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/'
-                            + subject + '/label/lh.V1_exvivo.label', subject)
+                            + (subject if (mode == 'stc') else 'fsaverage')
+                            + '/label/lh.V1_exvivo.label',
+                            (subject if(mode == 'stc') else 'fsaverage'))
     v1_rh = mne.read_label('/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/'
-                            + subject + '/label/rh.V1_exvivo.label', subject)
-    fname_src = get_fname(subject, 'src', src_spacing = src_spacing)
-    src = mne.read_source_spaces(project_dir + 'Data/src/' + fname_src, verbose = False)
+                            + (subject if (mode == 'stc') else 'fsaverage')
+                            + '/label/rh.V1_exvivo.label',
+                            (subject if (mode == 'stc') else 'fsaverage'))
+    fname_src = get_fname((subject if (mode == 'stc') else 'fsaverage'), 'src',
+                           src_spacing = src_spacing)
+    src = mne.read_source_spaces(project_dir + 'Data/src/' + fname_src,
+                                 verbose = False)
 
     # Comparison list to get inf distance if the peak is on the wrong hemi
     expected_hemi = [h + 'h' for h in "rrlrllllrr"] * 3
@@ -297,23 +317,28 @@ def tabulate_geodesics(project_dir, src_spacing, stc_method, task, stimuli,
                                        task, stimuli, bilaterals, suffix,
                                        return_index = False, subject = subject,
                                        mode = mode)
+        print(peaks)
         
         # Count average geodesic distance between peaks and V1 label points
         for peak_idx, peak in enumerate(peaks):
             dist = 0
             hemi_idx = 0 if peak_hemis[peak_idx] == 'lh' else 1
             if peak_hemis[peak_idx] == expected_hemi[peak_idx]:
+                # Get points used by the label
                 if peak_hemis[peak_idx] == 'lh':
                     used_verts = v1_lh.get_vertices_used(src[0]['vertno'])
                 else:
                     used_verts = v1_rh.get_vertices_used(src[1]['vertno'])
 
+                # Calculate avg distance between peak and label points
                 for vertex in used_verts:
                     d = src[hemi_idx]['dist'][peak, vertex] * 1000
                     if d == 0:
                         print(peak, vertex)
+                        a=1
                     dist += src[hemi_idx]['dist'][peak, vertex] * 1000 # m -> mm
                 dist /= len(used_verts)
+            # Wrong hemi
             else:
                 dist = np.inf
             distances[n_idx, peak_idx] = dist

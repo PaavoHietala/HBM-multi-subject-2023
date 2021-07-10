@@ -53,7 +53,7 @@ stimuli = ['sector' + str(num) for num in range(1,25)]
 # Suffix to append to filenames, used to distinguish averages of N subjects
 # Expected format is len(subjects)< optional text>
 
-suffix = str(len(subjects)) + 'subjects-avg-test'
+suffix = str(len(subjects)) + 'subjects'
 
 # List of raw rest files for covariance matrix and extracting sensor info
 
@@ -100,17 +100,27 @@ steps = {'prepare_directories' :        False,
          'compute_covariance_matrix' :  False,
          'construct_inverse_operator' : False,
          'estimate_source_timecourse' : False,
-         'morph_to_fsaverage' :         True,
+         'morph_to_fsaverage' :         False,
          'average_stcs_source_space' :  False,
          'label_peaks' :                False, # Not really useful
          'expand_peak_labels' :         False, # For intermediate plots only
          'label_all_vertices' :         False, # Broken
-         'plot_eccentricity_foci' :     False,
-         'plot_polar_foci' :            False,
+         'plot_eccentricity_foci' :     True,
+         'plot_polar_foci' :            True,
          'tabulate_geodesics' :         False} 
 
 
 ### Run the pipeline ----------------------------------------------------------
+
+if timing_fpath != None:
+    # Load V1 peak timing for all subjects
+    timing = np.loadtxt(timing_fpath).tolist()
+
+    # Restrict timings only to selected subjects
+    [timing.insert(i - 1, 0) for i in exclude]
+    timing = [t for i, t in enumerate(timing) if str(i + 1)
+              in [sub[7:] for sub in subjects]]
+    print('Loaded timings: ', timing)
 
 # Prepare all needed directories for the data
 if steps['prepare_directories']:
@@ -169,15 +179,6 @@ for idx, subject in enumerate(subjects):
 
 # Average data from all subjects for selected task and stimuli
 if steps['average_stcs_source_space']:
-    # Load V1 peak timing for all subjects
-    timing = np.loadtxt(timing_fpath).tolist()
-
-    # Restrict timings only to selected subjects
-    [timing.insert(i - 1, 0) for i in exclude]
-    timing = [t for i, t in enumerate(timing) if str(i + 1)
-              in [sub[7:] for sub in subjects]]
-    print('Loaded timings: ', timing)
-
     utils.average_stcs_source_space(subjects, project_dir, src_spacing, stc_method,
                                     task, stimuli, suffix, timing = timing,
                                     overwrite = overwrite)
@@ -201,12 +202,14 @@ if steps['label_all_vertices']:
 # Plot all stimulus peaks on fsaverage LH and RH, color based on 3-ring eccentricity
 if steps['plot_eccentricity_foci']:
     visualize.plot_foci(project_dir, src_spacing, stc_method, task, stimuli,
-                        colors_ecc, bilaterals, suffix, 'ecc', overwrite)
+                        colors_ecc, bilaterals, suffix, 'ecc', overwrite,
+                        time = (timing[0] if len(subjects) == 1 else None))
 
 # Plot all stimulus peaks on fsaverage LH and RH, color based on wedge
 if steps['plot_polar_foci']:
     visualize.plot_foci(project_dir, src_spacing, stc_method, task, stimuli,
-                        colors_polar, bilaterals, suffix, 'polar', overwrite)
+                        colors_polar, bilaterals, suffix, 'polar', overwrite,
+                        time = (timing[0] if len(subjects) == 1 else None))
 
 # Tabulate geodesic distances between peaks and V1 on 1-20 averaged subjects
 if steps['tabulate_geodesics']:
