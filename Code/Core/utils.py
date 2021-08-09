@@ -29,7 +29,8 @@ def get_fname(subject, ftype, stc_method = None, src_spacing = None,
     src_spacing : str, optional
         Source space scheme used in this file, e.g. 'oct6'. The default is None.
     fname_raw : str, optional
-        File name of raw recording from which the info is extracted. The default is None.
+        File name of raw recording from which the info is extracted.
+        The default is None.
     task : str, optional
         Task in the evoked response, e.g. 'f'. The default is None.
     stim: str, optional
@@ -77,6 +78,19 @@ def get_fname(subject, ftype, stc_method = None, src_spacing = None,
         raise ValueError('Invalid file type ' + ftype)
 
 def prepare_directories(project_dir):
+    '''
+    Prepare directories used in the pipelines in <project_dir>/*
+
+    Parameters
+    ----------
+    project_dir : str
+        Base directory to create the project folders in.
+    
+    Returns
+    -------
+    None.
+    '''
+
     for dirname in ['Data',
                     'Data/fwd',
                     'Data/src',
@@ -105,7 +119,7 @@ def average_stcs_source_space(subjects, project_dir, src_spacing, stc_method,
     subject : str
         Subject name/identifier as in filenames.
     project_dir : str
-        Base directory of the project with Code and Data subfolders.
+        Base directory of the project with Data subfolder.
     src_spacing : str
         Source space scheme used in this file, e.g. 'oct6'.
     stc_method : str
@@ -219,7 +233,7 @@ def find_peaks(project_dir, src_spacing, stc_method, task, stimuli, bilaterals,
     Parameters
     ----------
     project_dir : str
-        Base directory of the project with Code and Data subfolders.
+        Base directory of the project with Data subfolder.
     src_spacing : str
         Source space scheme used in this file, e.g. 'oct6'.
     stc_method : str
@@ -248,7 +262,7 @@ def find_peaks(project_dir, src_spacing, stc_method, task, stimuli, bilaterals,
     peaks : list of int
         List of peak valued vertex indices for each stimulus
     peak_hemis : list of str
-        List of hemispheres for each peak index in same order
+        List of hemispheres for each peak index in same order as peaks
     '''
 
     peaks = []
@@ -289,6 +303,37 @@ def find_peaks(project_dir, src_spacing, stc_method, task, stimuli, bilaterals,
 def tabulate_geodesics(project_dir, src_spacing, stc_method, task, stimuli,
                        bilaterals, suffix, overwrite, counts = [1, 5, 10, 15, 20],
                        subject = 'fsaverage', mode = 'avg'):
+    '''
+    Compute geodesic distances between peaks and the V1 label vertices and
+    save them in a csv file. Each row is one subject count in <counts> and
+    each column is a peak (two peaks for bilateral stimuli).
+
+    Parameters
+    ----------
+    project_dir : str
+        Base directory of the project with Data subfolder.
+    src_spacing : str
+        Source space scheme used in this file, e.g. 'oct6'.
+    stc_method : str
+        Inversion method used, e.g. 'dSPM'.
+    task : str
+        Task in the estimated stcs, e.g. 'f'.
+    stimuli: list of str
+        List of stimuli for whcih the stcs are estimated.
+    bilaterals : list of str
+        Names of bilateral stimuli
+    suffix : str
+        Suffix to append to the end of the output filename.
+    overwrite : bool, optional
+        Overwrite existing files switch. The default is False.
+    counts : list, optional
+        List of subject counts to calculate the distances for,
+        by default [1, 5, 10, 15, 20]
+    subject : str, optional
+        Subject for which the distances are calculated, by default 'fsaverage'
+    mode : str, optional
+        Stc type, either 'stc', 'stc_m' or 'avg', by default 'avg'
+    '''
 
     suffix = suffix.lstrip('0123456789')
     distances = np.zeros((len(counts), len(stimuli) + len(bilaterals)))

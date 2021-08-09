@@ -16,7 +16,8 @@ from .utils import get_fname
 def group_inversion(subjects, project_dir, src_spacing, stc_method, task, stim,
                     fwds, evokeds, noise_covs, target, overwrite, info = '',
                     suffix = None, **solver_kwargs):
-    '''Wrapper for the different groupmne solvers.
+    '''
+    Wrapper for the different groupmne solvers.
 
     Parameters
     ----------
@@ -102,7 +103,8 @@ def group_inversion(subjects, project_dir, src_spacing, stc_method, task, stim,
                     stcs, _ = reMTW_wrapper(fwds, evokeds, noise_covs, solver_kwargs)
                     break
                 except ValueError as e:
-                    print("Beta=" + str(solver_kwargs['beta']) + " caused an error (skipping):")
+                    print("Beta=" + str(solver_kwargs['beta'])
+                          + " caused an error (skipping):")
                     print(e)
                     print('Reducing beta by 0.01...\n')
                     solver_kwargs['beta'] -= 0.01

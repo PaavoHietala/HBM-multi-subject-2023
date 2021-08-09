@@ -108,6 +108,35 @@ def plot_result_estimates(subject, stim, method, project_dir, suffix = None,
                           stc_type = 'stc', src_to = 'fsaverage',
                           cbar_type = 'abs', overwrite = False,
                           clim = None):
+    '''
+    Monster of a function to plot source estimates.
+
+    Parameters
+    ----------
+    subject : str
+        Subject for which to draw the plot, e.g. 'fsaverage'.
+    stim : str
+        Stimulus name, e.g. 'sector1'.
+    method : str
+        Inverse solution method, e.g. 'eLORETA'.
+    project_dir : str
+        Base directory of the project with Data subfolder.
+    suffix : str
+        Suffix to append to the end of the output filename, by default None
+    stc_type : str, optional
+        Stc type, either 'stc', 'stc_m' or 'avg', by default 'stc'
+    src_to : str, optional
+        Mesh to which the stc was morphed beforehand (what mesh to actually draw
+        the plot on IF the stc has been morphed), by default 'fsaverage', None
+        if the stc has not been morphed.
+    cbar_type : str, optional
+        Color bar type, either 'abs' for positive only or 'bi' for neg-0-pos,
+        by default 'abs'
+    overwrite : bool, optional
+        Overwrite existing files switch. The default is False.
+    clim : dict, optional
+        Clims for the color bar, by default None for automatic clims
+    '''
     # Load source estimate
     fname_stc = '-'.join(filter(None, [subject, 'ico4', method, src_to, 'f',
                                        stim, suffix, 'lh.stc']))

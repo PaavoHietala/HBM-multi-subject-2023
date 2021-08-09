@@ -23,7 +23,7 @@ def compute_source_space(subject, project_dir, src_spacing, overwrite = False,
     subject : str
         Subject name/identifier as in filenames.
     project_dir : str
-        Base directory of the project with Code and Data subfolders.
+        Base directory of the project with Data subfolder.
     src_spacing : str
         Source space scheme used in this file, e.g. 'oct6'.
     overwrite : bool, optional
@@ -66,7 +66,7 @@ def calculate_bem_solution(subject, project_dir, overwrite):
     subject : str
         Subject name/identifier as in filenames.
     project_dir : str
-        Base directory of the project with Code and Data subfolders.
+        Base directory of the project with Data subfolder.
     overwrite : bool, optional
         Overwrite existing files switch. The default is False.
 
@@ -99,7 +99,7 @@ def calculate_forward_solution(subject, project_dir, src_spacing, bem, raw, core
     subject : str
         Subject name/identifier as in filenames.
     project_dir : str
-        Base directory of the project with Code and Data subfolders.
+        Base directory of the project with Data subfolder.
     src_spacing : str
         Source space scheme used in this file, e.g. 'oct6'.
     bem : str
@@ -137,7 +137,7 @@ def compute_covariance_matrix(subject, project_dir, raw, overwrite = False):
     subject : str
         Subject name/identifier as in filenames.
     project_dir : str
-        Base directory of the project with Code and Data subfolders.
+        Base directory of the project with Data subfolder.
     raw : str
         Full path to the raw recording used here for sensor info.
     overwrite : bool, optional
@@ -166,7 +166,7 @@ def morph_to_fsaverage(subject, project_dir, src_spacing, stc_method,
     subject : str
         Subject name/identifier as in filenames.
     project_dir : str
-        Base directory of the project with Code and Data subfolders.
+        Base directory of the project with Data subfolder.
     src_spacing : str
         Source space scheme used in this file, e.g. 'oct6'.
     stc_method : str

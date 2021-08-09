@@ -1,5 +1,5 @@
 '''
-This script plots the 8x3 source estimate grids in Figure X.X.
+This script plots the 8x3 source estimate grids in Appendix B.
 '''
 
 import os.path as op
@@ -16,25 +16,47 @@ from Core import utils
 from mpl_toolkits.axes_grid1 import (make_axes_locatable, ImageGrid,
                                      inset_locator)
 
+# Root data directory of the project, str
+
 project_dir = '/m/nbe/scratch/megci/MFinverse/reMTW/Data/'
+
+# Subjects' MRI location, str
 
 subjects_dir = '/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/'
 mne.set_config('SUBJECTS_DIR', subjects_dir)
 
+# Subject of the stcs to draw
+
 subject = 'fsaverage'
 
+# Original subject if stc_m is plotted
+
 og_subject = 'MEGCI_S1'
+
+# List of stimuli and bilateral stimuli
 
 stims = ['sector' + str(i) for i in range(1,25)]
 bilaterals = ['sector' + str(i) for i in [3, 7, 11, 15, 19, 23]]
 
+# Suffix used in stcs, usually subject count
+
 suffix = '20subjects'
+
+# Source spacing used in stcs, e.g. 'ico4'
 
 src_spacing = 'ico4'
 
+# Stc type, either 'stc', 'stc_m' or 'avg'
+
 stc_type = 'stc_m'
 
+# Inverse solution method, e.g. 'remtw'
+
 method = 'remtw'
+
+#
+# Run the script ---------------------------------------------------------------
+#
 
 fpath_out = op.join(project_dir, 'plot', '-'.join(['EstimateGrid', method, stc_type, suffix]) + '.png')
 
@@ -124,6 +146,7 @@ plt.savefig(fpath_out, bbox_inches = 'tight', pad_inches = 0.0)
 #
 # Create colorbar --------------------------------------------------------------
 #
+
 fig, ax = plt.subplots(figsize = (3, 4))
 ax.axis('off')
 divider = make_axes_locatable(ax)

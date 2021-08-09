@@ -1,13 +1,17 @@
 '''
-Tabulate V1 timing medians and stds for appendix B
+Tabulate V1 timing medians and stds for appendix B in LaTeX format.
 '''
 
 import numpy as np
 
+# CSV file with peak timings for all subjects and stimuli
+
 times = np.genfromtxt('/m/nbe/scratch/megci/MFinverse/Classic/Data/plot/V1_timing_evoked.csv',
                       delimiter = ',')
-outf = '/m/nbe/scratch/megci/MFinverse/Classic/Data/plot/V1_timing_stat_table.txt'
 
+# Output file
+
+outf = '/m/nbe/scratch/megci/MFinverse/Classic/Data/plot/V1_timing_stat_table.txt'
 
 times[times >= 0.1] = np.nan
 times[times <= 0.06] = np.nan

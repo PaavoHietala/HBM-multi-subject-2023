@@ -3,7 +3,7 @@
 """
 Created on Fri Feb 5 17:55:31 2021
 
-A collection of poorly documented code blocks used for intermediate plots etc.
+A collection of poorly documented code blocks used for intermediate/debug plots etc.
 
 @author: hietalp2
 """

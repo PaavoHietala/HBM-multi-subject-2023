@@ -63,6 +63,7 @@ def reMTW_wrapper(fwds, evokeds, noise_covs, solver_kwargs):
 def reMTW_param_plot(log, project_dir, param, stim, suffix = ''):
     '''
     Plot active source points vs. alpha or beta.
+    Saved in <project_dir>/Data/plot/.
 
     Parameters
     ----------
@@ -98,12 +99,14 @@ def reMTW_param_plot(log, project_dir, param, stim, suffix = ''):
     ax.get_yaxis().set_major_formatter(ScalarFormatter())
 
     # Save
-    plt.savefig(project_dir + 'Data/plot/' + param + '_' + stim + '_' + suffix + '.png')
+    plt.savefig(project_dir + 'Data/plot/' + param + '_' + stim + '_' + suffix
+                + '.png')
     plt.close()
 
 def reMTW_save_params(project_dir, param_name, param_list, actives, sec_name,
                       sec_value, stim, suffix = '', info = ''):
-    '''Save parameter log into a text file.
+    '''
+    Save parameter log into a text file in <project_dir>/Data/plot/.
 
     Parameters
     ----------
@@ -223,11 +226,14 @@ def reMTW_find_alpha(fwds, evokeds, noise_covs, stim, project_dir, solver_kwargs
     # Find alpha with 7 iterations
     for i in range(7):
         try:
-            print("Solving for alpha=" + str(solver_kwargs['alpha']) + " with beta=" + str(solver_kwargs['beta']))
+            print("Solving for alpha=" + str(solver_kwargs['alpha'])
+                  + " with beta=" + str(solver_kwargs['beta']))
             _, avg = reMTW_wrapper(fwds, evokeds, noise_covs, solver_kwargs)
-            print("Got " + str(avg) + " active sources with alpha=" + str(solver_kwargs['alpha']))
+            print("Got " + str(avg) + " active sources with alpha="
+                  + str(solver_kwargs['alpha']))
         except ValueError as e:
-            print("Alpha=" + str(solver_kwargs['alpha']) + " caused an error (skipping):")
+            print("Alpha=" + str(solver_kwargs['alpha'])
+                  + " caused an error (skipping):")
             print(e)
             solver_kwargs['alpha'] *= 2
             continue
@@ -242,7 +248,8 @@ def reMTW_find_alpha(fwds, evokeds, noise_covs, stim, project_dir, solver_kwargs
             log['alphas'].append(solver_kwargs['alpha'])
             log['actives'].append(avg)
         
-        solver_kwargs['alpha'] = reMTW_search_step(solver_kwargs['alpha'], log['alphas'],
+        solver_kwargs['alpha'] = reMTW_search_step(solver_kwargs['alpha'],
+                                                   log['alphas'],
                                                    history, 'alpha')
         print(log)
 
@@ -328,9 +335,11 @@ def reMTW_find_beta(fwds, evokeds, noise_covs, stim, project_dir, target,
         try:
             print("Solving for beta=" + str(solver_kwargs['beta']))
             stcs, avg = reMTW_wrapper(fwds, evokeds, noise_covs, solver_kwargs)
-            print("Got " + str(avg) + " active sources with beta=" + str(solver_kwargs['beta']))
+            print("Got " + str(avg) + " active sources with beta="
+                  + str(solver_kwargs['beta']))
         except ValueError as e:
-            print("Beta=" + str(solver_kwargs['beta']) + " caused an error (skipping):")
+            print("Beta=" + str(solver_kwargs['beta'])
+                  + " caused an error (skipping):")
             print(e)
             solver_kwargs['beta'] -= 0.05 * solver_kwargs['beta']
             continue
@@ -349,9 +358,11 @@ def reMTW_find_beta(fwds, evokeds, noise_covs, stim, project_dir, target,
             log['stcs'] += [stcs]
 
         # Find the next beta value to test
-        solver_kwargs['beta'] = reMTW_search_step(solver_kwargs['beta'], log['betas'],
+        solver_kwargs['beta'] = reMTW_search_step(solver_kwargs['beta'],
+                                                  log['betas'],
                                                   history, 'beta')
-        if solver_kwargs['beta'] < 0: solver_kwargs['beta'] = abs(solver_kwargs['beta'])   
+        if solver_kwargs['beta'] < 0:
+            solver_kwargs['beta'] = abs(solver_kwargs['beta'])   
           
         print(log['betas'], log['actives'])
 
@@ -410,9 +421,11 @@ def reMTW_tenplot_a(fwds, evokeds, noise_covs, stim, project_dir,
         try:
             print("Solving for alpha=" + str(solver_kwargs['alpha']))
             _, avg = reMTW_wrapper(fwds, evokeds, noise_covs, solver_kwargs)
-            print("Got " + str(avg) + " active sources with alpha=" + str(solver_kwargs['alpha']))
+            print("Got " + str(avg) + " active sources with alpha="
+                  + str(solver_kwargs['alpha']))
         except ValueError as e:
-            print("Alpha=" + str(solver_kwargs['alpha']) + " caused an error (skipping):")
+            print("Alpha=" + str(solver_kwargs['alpha'])
+                  + " caused an error (skipping):")
             print(e)
             solver_kwargs['alpha'] += 1
             continue
@@ -465,9 +478,11 @@ def reMTW_tenplot_b(fwds, evokeds, noise_covs, stim, project_dir,
         try:
             print("Solving for beta=" + str(solver_kwargs['beta']))
             _, avg = reMTW_wrapper(fwds, evokeds, noise_covs, solver_kwargs)
-            print("Got " + str(avg) + " active sources with beta=" + str(solver_kwargs['beta']))
+            print("Got " + str(avg) + " active sources with beta="
+                  + str(solver_kwargs['beta']))
         except ValueError as e:
-            print("beta=" + str(solver_kwargs['beta']) + " caused an error (skipping):")
+            print("beta=" + str(solver_kwargs['beta'])
+                  + " caused an error (skipping):")
             print(e)
             solver_kwargs['beta'] += 0.05
             continue

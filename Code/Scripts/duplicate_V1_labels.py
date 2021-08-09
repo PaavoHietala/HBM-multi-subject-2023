@@ -1,3 +1,8 @@
+'''
+MNE expect labels to be defined as <hemi>.<label name>.label. This script copies
+incorrectly named labels as MNE-compatible.
+'''
+
 import shutil
 
 exclude = [5, 8, 13, 15]

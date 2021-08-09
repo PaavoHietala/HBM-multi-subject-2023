@@ -22,7 +22,7 @@ def construct_inverse_operator(subject, project_dir, raw, src_spacing, overwrite
     subject : str
         Subject name/identifier as in filenames.
     project_dir : str
-        Base directory of the project with Code and Data subfolders.
+        Base directory of the project with Data subfolder.
     raw : str
         Full path to the raw recording used here for sensor info.
     src_spacing : str
@@ -67,7 +67,7 @@ def estimate_source_timecourse(subject, project_dir, raw, src_spacing, stc_metho
     subject : str
         Subject name/identifier as in filenames.
     project_dir : str
-        Base directory of the project with Code and Data subfolders.
+        Base directory of the project with Data subfolder.
     raw : str
         Full path to the raw recording used here for sensor info.
     src_spacing : str

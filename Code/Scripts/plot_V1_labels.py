@@ -1,14 +1,18 @@
 '''
 Plot freesurfer's V1 label and manual V1 label in a similar fashion to all 
-other brain plots in the Thesis. The result is in appendix B
+other brain plots in the Thesis. The result is in Figure 5.3.
 '''
 
 import mne
 import matplotlib.pyplot as plt
 import numpy as np
 
+# Subjects' MRI directory
+
 subjects_dir = '/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/'
 mne.set_config('SUBJECTS_DIR', subjects_dir)
+
+# Output directory
 
 out_dir = '/m/nbe/scratch/megci/MFinverse/Classic/Data/plot/'
 

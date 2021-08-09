@@ -1,5 +1,8 @@
 '''
-Extract V1 and V2 peaks in ms from MNE source estimates.
+Extract V1 and V2 peaks in ms from MNE source estimates and evoked responses.
+
+Use 'evoked' as mode to get timing from evoked responses.
+'stc' extracts timing from source estimates.
 
 Output is a csv file with n_stimuli rows and n_subjects columns.
 '''

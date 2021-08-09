@@ -51,7 +51,7 @@ Triton has no displays, so the code has to be run with a virtual display e.g. xv
 
 Additionally, when creating the job a GPU node has to be requested with slurm option `--gres=gpu:1`.
 
-An example array job file can be found in Code/Scripts/MFinverse_slurm_array.sh.
+Array jobs with logging are the preferred way to run the code. An example array job file can be found in Code/Scripts/MFinverse_slurm_array.sh.
 
 ### reMTW command line options
 
@@ -60,7 +60,11 @@ An example array job file can be found in Code/Scripts/MFinverse_slurm_array.sh.
 `-alpha=<number>` set fixed alpha and skip alpha search\
 `-beta=<number>` set fixed beta and skip beta search\
 `-tenplot` create alpha and beta plots with 11 equally distributed points\
-`-time=<start>,<stop>` crop evoked responses to this timeframe. If stop is omitted, stop=start.
+`-time=<start>,<stop>` crop evoked responses to this timeframe. If stop is omitted, stop=start.\
+`-target=<num>` Number of active source points to aim for.\
+`-suffix=<str>` Suffix to append to all file names, e.g. 20subjects.\
+`-concomitant=<bool>` Use concomitant noise level estimation True/False.\
+`-dir=<path>` Use different project directory than defined in pipeline.
 
 ## Potential issues
 

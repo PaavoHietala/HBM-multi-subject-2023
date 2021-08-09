@@ -30,7 +30,7 @@ def label_peaks(subjects, project_dir, src_spacing, stc_method, task, stimuli,
     subject : str
         Subject name/identifier as in filenames.
     project_dir : str
-        Base directory of the project with Code and Data subfolders.
+        Base directory of the project with Data subfolder.
     src_spacing : str
         Source space scheme used in this file, e.g. 'oct6'.
     stc_method : str
@@ -81,7 +81,7 @@ def plot_foci(project_dir, src_spacing, stc_method, task, stimuli, colors,
     Parameters
     ----------
     project_dir : str
-        Base directory of the project with Code and Data subfolders.
+        Base directory of the project with Data subfolder.
     src_spacing : str
         Source space scheme used in this file, e.g. 'oct6'.
     stc_method : str
@@ -186,14 +186,14 @@ def expand_peak_labels(subjects, project_dir, src_spacing, stc_method, task,
                        stimuli, colors, suffix, overwrite, bilaterals = []):
     '''
     Create labels for peaks activation locations for each hemisphere and
-    visualize the results.
+    visualize the results. Deprecated.
 
     Parameters
     ----------
     subject : str
         Subject name/identifier as in filenames.
     project_dir : str
-        Base directory of the project with Code and Data subfolders.
+        Base directory of the project with Data subfolder.
     src_spacing : str
         Source space scheme used in this file, e.g. 'oct6'.
     stc_method : str
@@ -296,14 +296,14 @@ def label_all_vertices(subjects, project_dir, src_spacing, stc_method, task,
                        stimuli, colors, overwrite):
     '''
     Create labels for every point based on which normalized response is the 
-    most prominant
+    most prominent. Deprecated.
 
     Parameters
     ----------
     subject : str
         Subject name/identifier as in filenames.
     project_dir : str
-        Base directory of the project with Code and Data subfolders.
+        Base directory of the project with Data subfolder.
     src_spacing : str
         Source space scheme used in this file, e.g. 'oct6'.
     stc_method : str
@@ -386,9 +386,11 @@ def label_all_vertices(subjects, project_dir, src_spacing, stc_method, task,
         print('Adding labels to ' + hemi + ' brain...')
         for label in labels:
             if hemi == 'lh':
-                brain_lh.add_label(label.smooth(subject = 'fsaverage', smooth = 2), alpha = 1, reset_camera = False)
+                brain_lh.add_label(label.smooth(subject = 'fsaverage', smooth = 2),
+                                   alpha = 1, reset_camera = False)
             else:
-                brain_rh.add_label(label.smooth(subject = 'fsaverage', smooth = 2), alpha = 1, reset_camera = False)
+                brain_rh.add_label(label.smooth(subject = 'fsaverage', smooth = 2),
+                                   alpha = 1, reset_camera = False)
 
     print('Done')
     brain_lh.show()
