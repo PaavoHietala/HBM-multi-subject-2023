@@ -11,16 +11,16 @@ import os
 import sys
 import numpy as np
 
-# Dirty hack to get the relative import from same dir to work
-sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 from Core import mne_common, mne_inverse, utils, visualize
 
-### Parameters ----------------------------------------------------------------
+### Parameters -----------------------------------------------------------------
 
-# Root data directory of the project
+# Root data directory of the project. Create a different folder for each
+# pipeline. E.g. .../MFinverse/MNE/ and .../MFinverse/reMTW/
+
 project_dir = '/m/nbe/scratch/megci/MFinverse/Classic/'
 
-# Subjects' MRI location
+# Subjects' FreeSurfer MRI location
 
 subjects_dir = '/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/'
 mne.set_config('SUBJECTS_DIR', subjects_dir)
@@ -30,19 +30,22 @@ mne.set_config('SUBJECTS_DIR', subjects_dir)
 exclude = [5, 8, 13, 15]
 subjects = ['MEGCI_S' + str(idx) for idx in list(range(1,2)) if idx not in exclude]
 
-# Source point spacing for source space calculation
+# Source point spacing for MNE-Python's source space calculation
 
 src_spacing = 'ico4'
 
-# Which BEM model to use for forward solution, <subject name> + <bem_suffix>.fif
+# Which BEM model to use for forward solution. Naming convention for BEM files
+# is <subject name> + <bem_suffix>.fif as created in calculate_bem_solution step
 
 bem_suffix = '-1-shell-bem-sol'
 
 # Which inversion method to use for source activity estimate
+# Options: 'MNE', 'dSPM', 'sLORETA', 'eLORETA'
 
 stc_method = 'eLORETA'
 
-# Which task is currently investigated
+# Which task is currently investigated. Used as a suffix in file names, can also
+# be 'None' if task suffix is not desired
 
 task = 'f'
 
@@ -51,7 +54,7 @@ task = 'f'
 stimuli = ['sector' + str(num) for num in range(1,25)]
 
 # Suffix to append to filenames, used to distinguish averages of N subjects
-# Expected format is len(subjects)< optional text>
+# Expected format is len(subjects)<optional text>
 
 suffix = str(len(subjects)) + 'subjects'
 
@@ -70,7 +73,9 @@ coreg_files = ['/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/' + subject +
 evoked_files = [project_dir + 'Data/Evoked/' + subject + '_f-ave.fif' for
                 subject in subjects]
 
-# File containing V1 peak timings for each subject
+# File containing V1 peak timings for each subject if subject-specific timing
+# is desired. Otherwise set to None.
+
 timing_fpath = project_dir + 'Data/plot/V1_medians_evoked.csv'
 
 # List of colors for each stimulus label, eccentricity rings and polar angles
@@ -90,7 +95,7 @@ bilaterals = ['sector3', 'sector7', 'sector11', 'sector15', 'sector19', 'sector2
 
 overwrite = True
 
-### Pipeline steps to run -----------------------------------------------------
+### Pipeline steps to run ------------------------------------------------------
 
 
 steps = {'prepare_directories' :        False,
@@ -105,12 +110,12 @@ steps = {'prepare_directories' :        False,
          'label_peaks' :                False, # Not really useful
          'expand_peak_labels' :         False, # For intermediate plots only
          'label_all_vertices' :         False, # Broken
-         'plot_eccentricity_foci' :     True,
-         'plot_polar_foci' :            True,
+         'plot_eccentricity_foci' :     False,
+         'plot_polar_foci' :            False,
          'tabulate_geodesics' :         False} 
 
 
-### Run the pipeline ----------------------------------------------------------
+### Run the pipeline, no changes required beyond this line ---------------------
 
 if timing_fpath != None:
     # Load V1 peak timing for all subjects

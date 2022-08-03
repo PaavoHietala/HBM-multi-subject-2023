@@ -10,7 +10,7 @@ def mat_to_mne_Evoked(mat_files, raw_files, results, tasks, arr_key = 'estimate'
     Converts MATLAB preprocessed .mat files of evoked responses to MNEpython's
     mne.Evoked class with sensor information from the original recording .fif.
     
-    MATLAB files have to be of form stimulus x time x sensors.
+    MATLAB files have to be a 3D .mat array of form stimuli x time x sensors.
 
     Parameters
     ----------
