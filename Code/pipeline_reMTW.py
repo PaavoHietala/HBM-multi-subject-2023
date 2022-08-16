@@ -14,7 +14,6 @@ import os
 import sys
 import numpy as np
 from datetime import datetime
-# from joblib import Parallel, delayed
 
 # Dirty hack to get the relative import from same dir to work
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
@@ -133,9 +132,6 @@ concomitant = False
 for arg in sys.argv[1:]:
     if arg.startswith('-stim='):
         stimuli = arg[6:].split(',')
-        print("Solving for stimuli", stimuli)
-    elif arg.startswith('-stimnum='):
-        stimuli = ['sector' + str(i) for i in arg[9:].split(',')]
         print("Solving for stimuli", stimuli)
     elif arg.startswith('-alpha='):
         alpha = float(arg[7:])

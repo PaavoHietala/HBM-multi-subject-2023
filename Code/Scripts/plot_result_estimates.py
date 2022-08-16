@@ -36,8 +36,9 @@ import mne
 
 # Root data directory of the project, str
 
-project_dirs = ['/m/nbe/scratch/megci/MFinverse/Classic/'] * 6 \
-               + ['/m/nbe/scratch/megci/MFinverse/reMTW/'] * 12
+#project_dirs = ['/m/nbe/scratch/megci/MFinverse/Classic/'] * 6 \
+#               + ['/m/nbe/scratch/megci/MFinverse/reMTW/'] * 12
+project_dirs = ['/m/nbe/scratch/megci/MFinverse/reMTW/'] * 6
 
 # Subjects' MRI location, str
 
@@ -46,50 +47,57 @@ mne.set_config('SUBJECTS_DIR', subjects_dir)
 
 # List of subjects, indices within all following lists must match
 
-subjects = ['MEGCI_S1', 'fsaverage', 'fsaverage'] * 2 \
-           + ['fsaverage', 'fsaverage', 'fsaverage'] * 2 \
-           + ['MEGCI_S1'] * 6
+#subjects = ['MEGCI_S1', 'fsaverage', 'fsaverage'] * 2 \
+#           + ['fsaverage', 'fsaverage', 'fsaverage'] * 2 \
+#           + ['MEGCI_S1'] * 6
+subjects = ['fsaverage'] * 3 + ['MEGCI_S1'] * 3
 
 # List of stimuli
 
-stims = (['sector16'] * 3 + ['sector15'] * 3) * 4
+#stims = (['sector16'] * 3 + ['sector15'] * 3) * 4
+stims = ['sector16'] * 6
 
 # List of methods used for each stc
 
-methods = ['eLORETA'] * 6 + ['remtw'] * 12
+#methods = ['eLORETA'] * 6 + ['remtw'] * 12
+methods = ['remtw'] * 6
 
 # Suffixes of stcs, can be None for indiviudal stcs
 
-suffixes = [None, '10subjects', '20subjects'] * 2 \
-           + ['1subjects', '10subjects', '20subjects'] * 4
+#suffixes = [None, '10subjects', '20subjects'] * 2 \
+#           + ['1subjects', '10subjects', '20subjects'] * 4
+suffixes = ['1subjects', '10subjects', '20subjects'] * 2
 
 # Types of each stc. stc, stc_m or avg
 
-stc_types = ['stc_m', 'avg', 'avg'] * 2 \
-            + ['avg', 'avg', 'avg'] * 2 \
-            + ['stc_m'] * 6
+#stc_types = ['stc_m', 'avg', 'avg'] * 2 \
+#            + ['avg', 'avg', 'avg'] * 2 \
+#            + ['stc_m'] * 6
+stc_types = ['avg'] * 3 + ['stc_m'] * 3
 
 # Target source space of stc_m and avg, usually fsaverage
 
-src_tos = ['fsaverage', None, None] * 2 \
-          + [None, None, None] * 2 \
-          + ['fsaverage'] * 6
+#src_tos = ['fsaverage', None, None] * 2 \
+#          + [None, None, None] * 2 \
+#          + ['fsaverage'] * 6
+src_tos = [None, None, None, 'fsaverage', 'fsaverage', 'fsaverage']
 
 # Get peak for selected time only
 
 time = 0.081
 
 # Plot colorbar from 0 to max (abs) or from -max to +max (bi), abs to separate
-# file (sep) or None
+# file (sep), bi to separate file (bisep) or None
 
-cbars = [None] * 5 + ['sep'] + ['abs', 'abs', 'abs'] * 2 + ['bi'] * 6
+#cbars = [None] * 5 + ['sep'] + ['abs', 'abs', 'abs'] * 2 + ['bi'] * 6
+cbars = ['sep'] * 3 + ['bisep'] * 3
 
 # Overwrite existing files
 
 overwrite = True
 
 # Custom clims, mainly for eLORETA to set all 6 to same limits
-
+'''
 abs_max = 0
 for stim, suffix in zip(stims[:6], suffixes[:6]):
     stc = mne.read_source_estimate(project_dirs[0]
@@ -99,6 +107,8 @@ for stim, suffix in zip(stims[:6], suffixes[:6]):
         abs_max = np.max(abs(stc.data)) * 0.75
 
 clims = [{'kind' : 'value', 'lims' : [0, 0.5 * abs_max, abs_max]}] * 6 + [None] * 12
+'''
+clims = [None] * 6
 
 #
 # Run the script for all data --------------------------------------------------
@@ -178,7 +188,7 @@ def plot_result_estimates(subject, stim, method, project_dir, suffix = None,
                        color = 'lime', hemi = hemi)
     
     # Set colorbar limits and type
-    if cbar_type == 'sep':
+    if cbar_type == 'sep' and clim != None:
         maxi = clim['lims'][2]
     else:
         if stc.data.shape[1] > 1:
@@ -187,9 +197,9 @@ def plot_result_estimates(subject, stim, method, project_dir, suffix = None,
             maxi = abs(stc.data).max()
     
     if clim == None and cbar_type:
-        if cbar_type == 'abs':
+        if cbar_type in ['abs', 'sep']:
             clim = dict(kind = 'value', lims = [0, 0.5 * maxi, maxi])
-        elif cbar_type == 'bi':
+        elif cbar_type in ['bi', 'bisep']:
             clim = dict(kind='value', pos_lims=[0, 0.5 * maxi, maxi])
     
     for hemi in ['lh', 'rh']:
@@ -225,7 +235,7 @@ def plot_result_estimates(subject, stim, method, project_dir, suffix = None,
     axes.imshow(cropped_screenshot)
     axes.axis('off')
 
-    if cbar_type == None or cbar_type == 'sep':
+    if cbar_type in [None, 'sep', 'bisep']:
         plt.savefig(fpath_out, bbox_inches = 'tight', pad_inches = 0.0)
         if cbar_type == None:
             return
@@ -249,7 +259,7 @@ def plot_result_estimates(subject, stim, method, project_dir, suffix = None,
                                             label = r'Activation (Am) '
                                             + r'$\cdot 10^{'
                                             + exponent + r'}$')
-        if cbar_type == 'bi':
+        if cbar_type in ['bi', 'bisep']:
             cbar.set_ticks([-maxi, 0, maxi])
             cbar.set_ticklabels(["%.2f" % -float(base), "%.2f" % 0.00,
                                  "%.2f" % float(base)])
@@ -263,7 +273,7 @@ def plot_result_estimates(subject, stim, method, project_dir, suffix = None,
         cbar = mne.viz.plot_brain_colorbar(cax, clim,
                                             orientation = 'horizontal',
                                             label = 'Activation (Am)')
-        if cbar_type == 'bi':
+        if cbar_type in ['bi', 'bisep']:
             cbar.set_ticks([round(-maxi, 2), 0, round(maxi, 2)]) 
             cbar.set_ticklabels(["%.2f" % -maxi, "%.2f" % 0.00, "%.2f" % maxi])
         else:    
@@ -274,7 +284,7 @@ def plot_result_estimates(subject, stim, method, project_dir, suffix = None,
                         wspace = 0.1, hspace = 0.5)
 
     # Save image        
-    if cbar_type == 'sep':
+    if cbar_type in ['sep', 'bisep']:
         plt.tight_layout()
         # Save colorbar to buffer
 
