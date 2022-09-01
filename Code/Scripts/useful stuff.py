@@ -106,14 +106,14 @@ task = 'f'
 stimuli = ['sector' + str(num) for num in range(1,25)]
 
 # Root directory of the project
-project_dir = '/m/nbe/scratch/megci/MFinverse/'
+project_dir = '/m/nbe/scratch/megci/MFinverse/Classic-data-thesis-submission-state/'
 
 #%% Plot estimated SNR for all ques
 
 #inv = mne.minimum_norm.read_inverse_operator('/m/nbe/scratch/megci/MFinverse/Data/inv/MEGCI_S1-oct6-rest1-inv.fif')
-evokeds = mne.read_evokeds('/m/nbe/scratch/megci/MFinverse/Data/Evoked/MEGCI_S1_f-ave.fif')
-fwd = mne.read_forward_solution('/m/nbe/scratch/megci/MFinverse/Data/fwd/MEGCI_S1-oct6-fwd.fif')
-cov = mne.read_cov('/m/nbe/scratch/megci/MFinverse/Data/cov/MEGCI_S1-rest1-cov.fif')
+evokeds = mne.read_evokeds('/m/nbe/scratch/megci/MFinverse/Classic-data-thesis-submission-state/Data/Evoked/MEGCI_S1_f-ave.fif')
+fwd = mne.read_forward_solution('/m/nbe/scratch/megci/MFinverse/Classic-data-thesis-submission-state/Data/fwd/MEGCI_S1-oct6-fwd.fif')
+cov = mne.read_cov('/m/nbe/scratch/megci/MFinverse/Classic-data-thesis-submission-state/Data/cov/MEGCI_S1-rest1-cov.fif')
 
 snrs = []
 for i, s in enumerate(stimuli):
@@ -122,6 +122,25 @@ for i, s in enumerate(stimuli):
     fpath_stc = os.path.join(project_dir, 'Data', 'stc', fname_stc)
     stc = mne.read_source_estimate(fpath_stc)
     snrs.append(stc.estimate_snr(evokeds[0].info, fwd, cov))
+    
+    
+#%%
+
+from mne.datasets.sample import data_path
+from mne.minimum_norm import read_inverse_operator
+from mne import read_evokeds
+from mne.viz import plot_snr_estimate
+
+print(__doc__)
+
+data_dir = '/m/nbe/scratch/megci/MFinverse/Classic-data-thesis-submission-state/Data/'
+fname_inv = data_dir + 'inv/MEGCI_S1-ico4-rest1-inv.fif'
+fname_evoked = data_dir + 'Evoked/MEGCI_S1_f-ave.fif'
+
+inv = read_inverse_operator(fname_inv)
+evoked = read_evokeds(fname_evoked, baseline=(None, 0))[1]
+
+plot_snr_estimate(evoked, inv)
 
 #%%
 time = np.linspace(-50, 450, num = 501)
