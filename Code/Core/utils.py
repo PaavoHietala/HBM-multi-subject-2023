@@ -91,21 +91,14 @@ def prepare_directories(project_dir):
     None.
     '''
 
-    for dirname in ['Data',
-                    'Data/fwd',
-                    'Data/src',
-                    'Data/inv',
-                    'Data/stc',
-                    'Data/stc_m',
-                    'Data/avg',
-                    'Data/labels',
-                    'Data/cov',
-                    'Data/plot',
-                    'Data/slurm_out']:
+    subdirs = ['fwd', 'src', 'inv', 'stc', 'stc_m', 'avg', 'labels', 'cov',
+               'plot', 'slurm_out']
+    for dirname in ['Data'] + [os.path.join('Data', dir) for dir in subdirs]:
         try:
             os.makedirs(project_dir + dirname)
+            print("Created dir", dirname)
         except FileExistsError:
-            pass
+            print("Directory", dirname, "already exists")
 
 def average_stcs_source_space(subjects, project_dir, src_spacing, stc_method,
                               task, stimuli, suffix = None, timing = None,
