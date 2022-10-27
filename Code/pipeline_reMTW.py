@@ -15,7 +15,7 @@ import sys
 import numpy as np
 from datetime import datetime
 
-# Dirty hack to get the relative import from same dir to work
+# Dirty hack to get the cross-platform relative import from same dir to work
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 from Core import mne_common, solvers, utils, visualize, reMTW
 
@@ -31,32 +31,33 @@ print(datetime.now().strftime("%D.%M.%Y %H:%M:%S"),
 
 project_dir = '/m/nbe/scratch/megci/MFinverse/reMTW/'
 
-# Subjects' MRI location, str
+# Subjects' MRI location (=FreeSurfer file location), str
 
 subjects_dir = '/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/'
 mne.set_config('SUBJECTS_DIR', subjects_dir)
 
-# List of subject names, subjects 1-24 available ex. those in exclude,
+# Subject names, IDs 1-24 available, 4 subjects are excluded for data issues,
 # list of str 
 
 exclude = [5, 8, 13, 15]
 subjects = ['MEGCI_S' + str(idx) for idx in list(range(1,25)) if idx not in exclude]
 
-# Get foci and geodesics results from individual subject instead of average if
-# this value is set to str instead of None. None produces average results.
+# Get foci and geodesics results from individual subject ("Single-subject MWE"),
+# e.g. 'MEGCI_S1' instead of average if this value is set to str instead of None.
+# None produces averaged results ("MWE with source-space averaging").
 
-solo_subject = None#'MEGCI_S1'
+solo_subject = None
 
 # Source point spacing for source space calculation, str
 
 src_spacing = 'ico4'
 
-# Which BEM model to use for forward solution,
+# Which BEM model to use for forward solution, the BEM filename is expected to be
 # <subject name> + <bem_suffix>.fif, str
 
 bem_suffix = '-1-shell-bem-sol'
 
-# Which inversion method to use for source activity estimate,
+# Which groupmne inversion method to use for source activity estimate,
 # only remtw tested, str
 
 stc_method = 'remtw'
@@ -82,10 +83,12 @@ coreg_files = ['/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/' + subject +
 
 # List of evoked response files for source activity estimate, list of str
 
-evoked_files = ['/m/nbe/scratch/megci/MFinverse/reMTW/Data/Evoked/' + subject
+evoked_files = [os.path.join(project_dir, 'Data', 'Evoked') + subject
                 + '_f-ave.fif' for subject in subjects]
 
-# List of matplotlib colors for each stimulus label, list of str
+# List of matplotlib colors for each stimulus area, colors are used in foci plots,
+# colors_ecc in eccentricity-based plots and colors_polar in polar angle -based
+# plots, list of str
 
 colors = ['mistyrose', 'plum', 'thistle', 'lightsteelblue', 'lightcyan', 'lightgreen',
           'lightyellow', 'papayawhip', 'lightcoral', 'violet', 'mediumorchid', 'royalblue',
@@ -102,17 +105,17 @@ overwrite = True
 
 bilaterals = ['sector3', 'sector7', 'sector11', 'sector15', 'sector19', 'sector23']
 
-# How many active source point are we aiming for, int
+# How many average active source points are we aiming for, int
 
 target = 2
 
 # Suffix to append to filenames, used to distinguish averages of N subjects
-# Expected format is len(subjects)< optional text>, str
+# Expected format is len(subjects)<optional text>, str
 
 suffix = str(len(subjects)) + 'subjects'
 
 # File containing V1 peak timings for each subject, if None start and stop times
-# will be used for all subjects, str or None
+# (by default 0.08) will be used for all subjects, str or None
 
 timing_fpath = '/m/nbe/scratch/megci/MFinverse/Classic/Data/plot/V1_medians_evoked.csv'
 
@@ -120,6 +123,26 @@ timing_fpath = '/m/nbe/scratch/megci/MFinverse/Classic/Data/plot/V1_medians_evok
 # list of int
 
 counts = [1, 5, 10, 15, 20]
+
+### Pipeline steps to run ------------------------------------------------------
+
+steps = {'prepare_directories' :        False,
+         'compute_source_space' :       False,
+         'restrict_src_to_label' :      False, # Not working, MWE needs continuous surfs
+         'calculate_bem_solution' :     False,
+         'calculate_forward_solution' : False,
+         'compute_covariance_matrix' :  False,
+         'estimate_source_timecourse' : False,
+         'morph_to_fsaverage' :         False,
+         'average_stcs_source_space' :  True,
+         'label_peaks' :                False, # Not really useful
+         'expand_peak_labels' :         False, # For intermediate plots only
+         'label_all_vertices' :         False, # Broken
+         'plot_eccentricity_foci' :     False,
+         'plot_polar_foci' :            False,
+         'tabulate_geodesics' :         True}
+
+### Run the pipeline -----------------------------------------------------------
 
 # Check CLI arguments, override other settings
 
@@ -157,26 +180,6 @@ for arg in sys.argv[1:]:
         project_dir = arg[5:]
     else:
         print('Unknown argument: ' + arg)
-
-### Pipeline steps to run ------------------------------------------------------
-
-steps = {'prepare_directories' :        False,
-         'compute_source_space' :       False,
-         'restrict_src_to_label' :      False, # Not working, MWE needs continuous surfs
-         'calculate_bem_solution' :     False,
-         'calculate_forward_solution' : False,
-         'compute_covariance_matrix' :  False,
-         'estimate_source_timecourse' : True,
-         'morph_to_fsaverage' :         True,
-         'average_stcs_source_space' :  True,
-         'label_peaks' :                False, # Not really useful
-         'expand_peak_labels' :         False, # For intermediate plots only
-         'label_all_vertices' :         False, # Broken
-         'plot_eccentricity_foci' :     False,
-         'plot_polar_foci' :            False,
-         'tabulate_geodesics' :         False}
-
-### Run the pipeline -----------------------------------------------------------
 
 # Prepare all needed directories for the data
 if steps['prepare_directories']:
