@@ -128,7 +128,6 @@ counts = [1, 5, 10, 15, 20]
 
 steps = {'prepare_directories' :        False,
          'compute_source_space' :       False,
-         'restrict_src_to_label' :      False, # Not working, MWE needs continuous surfs
          'calculate_bem_solution' :     False,
          'calculate_forward_solution' : False,
          'compute_covariance_matrix' :  False,
@@ -189,11 +188,6 @@ if steps['prepare_directories']:
 if steps['compute_source_space']:
     mne_common.compute_source_space('fsaverage', project_dir, src_spacing, overwrite,
                                     add_dist = True)
-
-# Attempt to restrict source points to a label, doesn't work currently
-if steps['restrict_src_to_label']:
-    labels = mne.read_labels_from_annot('fsaverage', 'aparc.a2009s')
-    utils.restrict_src_to_label('fsaverage', project_dir, src_spacing, overwrite, labels)
 
 # Following steps are run on per-subject basis
 for idx, subject in enumerate(subjects):   

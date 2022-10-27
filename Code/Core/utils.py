@@ -172,51 +172,6 @@ def average_stcs_source_space(subjects, project_dir, src_spacing, stc_method,
             print(fpath)
             avg.save(fpath)
 
-def restrict_src_to_label(subject, project_dir, src_spacing, overwrite, labels):
-    '''
-    Experimental function to restrict source points to given labels. Works, but
-    apparently reMTW expects closed surface so the source distance matrix creation
-    fails.
-
-    No plans for further development.
-    '''
-    fname = get_fname(subject, 'src', src_spacing = src_spacing)
-    fpath = os.path.join(project_dir, 'Data', 'src', fname)
-
-    if overwrite or not os.path.isfile(fpath):
-        # Load original source space
-        src = mne.read_source_spaces(fpath)
-
-        for s, hemi in zip(src, ['lh', 'rh']):
-            vertno = np.where(s['inuse'])[0]
-
-            # Mark only the source points under the labels active
-            verts = np.concatenate([l.get_vertices_used(vertno) for l in labels
-                                    if l.name != 'Unknown-' + hemi and hemi in l.name])
-            # tris = np.concatenate([l.get_tris(s['use_tris'], vertno) for l in labels
-            #                        if l.name != 'Unknown-' + hemi and hemi in l.name])
-
-            # Groupmne crashes if lh and rh have different amount of source points
-            if hemi == 'rh' and src[0]['nuse'] != src[1]['nuse']:
-                verts = verts[:-1]
-            deleted = s['nuse'] - len(verts)
-
-            s['inuse'][[i for i in vertno if i not in verts]] = 0
-            # s['use_tris'] = tris
-            # s['nuse_tri'] = np.array([tris.shape[0]])
-            s['nuse'] -= deleted
-            s['vertno'] = np.where(s['inuse'])[0]
-
-        print(src[0]['vertno'])
-        print(src[0]['inuse'].dtype, len(src[0]['inuse']), type(src[0]['inuse']), src[0]['inuse'].shape)
-        print(src[0]['vertno'].dtype, len(src[0]['vertno']), type(src[0]['vertno']), src[0]['vertno'].shape)
-        print(type(src[0]['nuse']), src[0]['nuse'])
-
-        #input()
-        #src.plot()
-
-        src.save(fpath, overwrite = True)
-
 def find_peaks(project_dir, src_spacing, stc_method, task, stimuli, bilaterals,
                suffix, return_index = False, subject = 'fsaverage', mode = 'avg',
                stc = None, time = None):
