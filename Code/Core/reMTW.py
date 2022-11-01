@@ -14,6 +14,7 @@ from timeit import default_timer as timer
 import matplotlib.pyplot as plt
 from matplotlib.ticker import ScalarFormatter
 from groupmne import compute_group_inverse
+import os
 
 def reMTW_wrapper(fwds, evokeds, noise_covs, solver_kwargs):
     '''
@@ -62,8 +63,11 @@ def reMTW_wrapper(fwds, evokeds, noise_covs, solver_kwargs):
 
 def reMTW_param_plot(log, project_dir, param, stim, suffix = ''):
     '''
-    Plot active source points vs. alpha or beta.
-    Saved in <project_dir>/Data/plot/.
+    Plot active source points vs. alpha or beta. Intermediate plots are generated
+    by the pipeline each time a parameter search is run. Used also for Figure 2
+    with option 'tenplot'.
+
+    The plots are saved in <project_dir>/Data/plot/.
 
     Parameters
     ----------
@@ -86,10 +90,10 @@ def reMTW_param_plot(log, project_dir, param, stim, suffix = ''):
     plt.ioff()
     plt.figure(figsize=(4,2.5))
     plt.plot(log[param], log['actives'], '--bo')
+
     plt.yscale('log')
-    plt.xlabel((r'$\mu$' if param == 'alpha' else r'$\lambda$'), fontsize=13)
-    plt.ylabel('AVG active sources', fontsize = 13)
-    #plt.title(stim + ' ' + param)
+    plt.xlabel((r'$\mu$' if param == 'alpha' else r'$\lambda$'), fontsize=15)
+    plt.ylabel('AVG active sources', fontsize = 15)
     plt.tight_layout()
     plt.grid()
 
@@ -98,9 +102,7 @@ def reMTW_param_plot(log, project_dir, param, stim, suffix = ''):
     plt.yticks([1, 5, 10, 50, 500, 1000, 2500, 5000])
     ax.get_yaxis().set_major_formatter(ScalarFormatter())
 
-    # Save
-    plt.savefig(project_dir + 'Data/plot/' + param + '_' + stim + '_' + suffix
-                + '.png')
+    plt.savefig(os.path.join(project_dir, 'Data', 'plot', f'{param}_{stim}_{suffix}.pdf'))
     plt.close()
 
 def reMTW_save_params(project_dir, param_name, param_list, actives, sec_name,
