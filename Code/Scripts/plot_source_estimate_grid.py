@@ -1,5 +1,5 @@
 '''
-This script plots the 8x3 source estimate grids in Appendix B.
+This script plots the 8x3 source estimate grids in Results.
 '''
 
 import os.path as op
@@ -18,7 +18,7 @@ from mpl_toolkits.axes_grid1 import (make_axes_locatable, ImageGrid,
 
 # Root data directory of the project, str
 
-project_dir = '/m/nbe/scratch/megci/MFinverse/reMTW/Data/'
+project_dir = '/m/nbe/scratch/megci/MFinverse/Classic/Data/'
 
 # Subjects' MRI location, str
 
@@ -48,11 +48,16 @@ src_spacing = 'ico4'
 
 # Stc type, either 'stc', 'stc_m' or 'avg'
 
-stc_type = 'stc_m'
+stc_type = 'avg'
 
-# Inverse solution method, e.g. 'remtw'
+# Inverse solution method, 'remtw' or 'eLORETA'
 
-method = 'remtw'
+method = 'eLORETA'
+
+# V1 freesurfer label location
+
+label_fpath_lh = '/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/fsaverage/label/lh.V1_exvivo.label'
+label_fpath_rh = '/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/fsaverage/label/rh.V1_exvivo.label'
 
 #
 # Run the script ---------------------------------------------------------------
@@ -80,9 +85,10 @@ for stim in stims:
     if np.min(abs(stc.data)[np.nonzero(stc.data)]) < abs_min:
         abs_min = np.min(abs(stc.data)[np.nonzero(stc.data)])
 
-fig, axes = plt.subplots(nrows = 8, ncols = 3, figsize = (8,24))
+fig, axes = plt.subplots(nrows = 8, ncols = 3, figsize = (8, 24))
                          #gridspec_kw = {'height_ratios' : [1] * 8 + [0.00001]})
 
+# Set colorbar properties depending on the data type (averaged or not)
 if method == 'remtw' and stc_type == 'stc_m':
     clim = {'kind' : 'value', 'pos_lims' : [0, 0, abs_min_max]}
 elif method == 'remtw' and stc_type == 'avg':
@@ -115,10 +121,8 @@ for row_idx in range(0,8):
                          background = 'w', colorbar = False,
                          time_viewer = False, show_traces = False, clim = clim)
         
-        for hemi in ['lh', 'rh']:
-            v1 = mne.read_label('/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/'
-                                + 'fsaverage/label/' + hemi + '.V1_exvivo.label',
-                                'fsaverage')
+        for label in [label_fpath_lh, label_fpath_rh]:
+            v1 = mne.read_label(label, 'fsaverage')
             brain.add_label(v1, borders = 2, color = 'lime')
         
         # Add peak foci
@@ -141,7 +145,7 @@ for row_idx in range(0,8):
 
 # Save image
 plt.tight_layout()     
-plt.savefig(fpath_out, bbox_inches = 'tight', pad_inches = 0.0)
+plt.savefig(fpath_out, bbox_inches = 'tight', pad_inches = 0.0, dpi = 300)
 
 #
 # Create colorbar --------------------------------------------------------------
@@ -166,12 +170,14 @@ elif method == 'remtw' and stc_type == 'avg':
 else: 
     cbar.set_ticklabels(["%.2g" % clim['lims'][0], "%.2g" % clim['lims'][1],
                          "%.2g" % clim['lims'][2]])
+
+cbar.outline.set_visible(True)
 plt.tight_layout()
 
 # Save colorbar to buffer
 
 buf = BytesIO()
-fig.savefig(buf)
+fig.savefig(buf, dpi = 300)
 buf.seek(0)
 cb = Image.open(buf)
 cb.load()
@@ -202,9 +208,3 @@ for im in [grid, cb]:
     x_offset += int((w[0] / 2) - (w[1] / 2))
 
 final.save(fpath_out[:-4] + '-cb.png')
-
-
-
-
-
-
