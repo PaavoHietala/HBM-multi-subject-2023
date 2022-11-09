@@ -1,4 +1,4 @@
-#%% Function to transform preprocessed .mat to mne.Evoked structure
+# Transform preprocessed MATLAB .mat files to mne.Evoked structure.
 
 import mne
 import numpy as np
@@ -21,7 +21,7 @@ def mat_to_mne_Evoked(mat_files, raw_files, results, tasks, arr_key = 'estimate'
     results : list
         List of full paths to output files
     arr_key : str
-        Name of the array inside the .mat file, default: estimate
+        Name of the array inside the .mat file, default: 'estimate'
     tmin : float
         Start of the averaged response in relation to the stimulus, default: 0
     nave : int
@@ -42,35 +42,36 @@ def mat_to_mne_Evoked(mat_files, raw_files, results, tasks, arr_key = 'estimate'
         raw.info.pick_channels([sensor['ch_name'] for sensor in raw.info['chs'] if
                                 sensor['ch_name'][:3] == 'MEG'])
         
-        # Collect evoked responses to each stimulus into a list
+        # Collect the evoked response for each stimulus into a list
         evoked_list = []
         for stim_id, response in enumerate(mat[arr_key]):       
             evoked_array = mne.EvokedArray(np.transpose(response), raw.info,
                                            tmin = tmin, nave = nave,
-                                           comment = 'Task ' + tasks[i] + ', Sector '
-                                           + str(stim_id+1))
+                                           comment = f'Task {tasks[i]}, Sector '
+                                                     + f'{stim_id + 1}')
              
             evoked_list.append(evoked_array)
         
         # Write one evoked .fif file per subject
         mne.write_evokeds(output, evoked_list)
 
-#%% Example function call to transform a folder's worth of matlab-analyzed data
+# Example function call to transform a folder's worth of matlab-analyzed data:
+if __name__ == "__main__":
+    ROOT_DIR = "/m/nbe/scratch/megci/data/MEG/"
+    result_dir = "/m/nbe/scratch/megci/MFinverse/mat_test/"
 
-ROOT_DIR = "/m/nbe/scratch/megci/data/MEG/"
-result_dir = "/m/nbe/scratch/megci/MFinverse/Data/Evoked/"
+    raw_files = []
+    mat_files = []
+    results = []
+    tasks = []
 
-raw_files = []
-mat_files = []
-results = []
-tasks = []
+    # Compile list of files to convert, raw data files and output files
+    for s_id in [s_id for s_id in range(1, 25) if s_id not in [5, 8, 13, 15]]:
+        raw_files.append(ROOT_DIR + 'megci_rawdata_mc_ic/megci_s' + str(s_id) +
+                        '_mc/run4_raw_tsss_mc_transOHP_blinkICremoved.fif')
+        mat_files.append(ROOT_DIR + 'evoked/S' + str(s_id) + '_f.mat')
+        results.append(result_dir + 'MEGCI_S' + str(s_id) + '_f-ave.fif')
+        tasks.append('f')
 
-# Compile list of files to convert, raw data files and output files
-for s_id in [s_id for s_id in list(range(1,25)) if s_id not in [5,8,13,15]]:
-    raw_files.append(ROOT_DIR + 'megci_rawdata_mc_ic/megci_s' + str(s_id) +
-                     '_mc/run4_raw_tsss_mc_transOHP_blinkICremoved.fif')
-    mat_files.append(ROOT_DIR + 'evoked/S' + str(s_id) + '_f.mat')
-    results.append(result_dir + 'MEGCI_S' + str(s_id) + '_f-ave.fif')
-    tasks.append('f')
-
-mat_to_mne_Evoked(mat_files, raw_files, results, tasks, tmin = -0.05, nave = 1806)
+    mat_to_mne_Evoked(mat_files, raw_files, results, tasks, tmin = -0.05,
+                      nave = 1806)
