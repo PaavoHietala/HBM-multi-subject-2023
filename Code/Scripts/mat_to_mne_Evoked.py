@@ -58,7 +58,7 @@ def mat_to_mne_Evoked(mat_files, raw_files, results, tasks, arr_key = 'estimate'
 # Example function call to transform a folder's worth of matlab-analyzed data:
 if __name__ == "__main__":
     ROOT_DIR = "/m/nbe/scratch/megci/data/MEG/"
-    result_dir = "/m/nbe/scratch/megci/MFinverse/mat_test/"
+    result_dir = "/m/nbe/scratch/megci/MFinverse/Classic/Data/Evoked/"
 
     raw_files = []
     mat_files = []
