@@ -11,6 +11,7 @@ import mne
 import numpy as np
 import sys
 import os
+
 # Dirty hack to get the relative import from same dir to work
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 from Core import mne_common as mne_op
@@ -26,14 +27,14 @@ task = 'f'
 mode = 'evoked'
 
 exclude = [5, 8, 13, 15]
-subjects = ['MEGCI_S' + str(idx) for idx in list(range(1,25)) if idx not in exclude]
-stimuli = ['sector' + str(num) for num in range(1,25)]
+subjects = [f'MEGCI_S{id}' for id in list(range(1, 25)) if id not in exclude]
+stimuli = [f'sector{num}' for num in range(1, 25)]
 
 # Execution --------------------------------------------------------------------
 
 def stc_timing(stc_dir, src_spacing, stc_method, task, subjects, stimuli):
     '''
-    Export peak timing from MNE.SourceEstimate structures saved in files.
+    Export peak timing from mne.SourceEstimate structures saved in files.
 
     V1 is expected to be responsible for the peak between 60 and 100ms.
     V2 is expected to be responsible for the peak between 100 and 150ms.
@@ -57,8 +58,10 @@ def stc_timing(stc_dir, src_spacing, stc_method, task, subjects, stimuli):
 
     Returns
     -------
-    Tuple of two numpy arrays (V1, V2)
-        V1 and V2 timings in numpy arrays of form [n_stimuli, n_subjects]
+    V1 : numpy.ndarray
+        V1 timings as an array of form [n_stimuli, n_subjects]
+    V2 : numpy.ndarray
+        V2 timings as an array of form [n_stimuli, n_subjects]
     '''
 
     V1 = np.zeros((len(stimuli), len(subjects)))
@@ -101,11 +104,11 @@ def stc_timing(stc_dir, src_spacing, stc_method, task, subjects, stimuli):
             print(subject, stim, '%.3f' % V1[stim_idx, sub_idx],
                   '%.3f' % V2[stim_idx, sub_idx])
         
-        return (V1, V2)
+        return V1, V2
 
 def evoked_timing(evoked_dir, task, subjects, stimuli):
     '''
-    Export peak timing from MNE.Evoked structures saved in files.
+    Export peak timing from magnetometers in mne.Evoked structures in files.
 
     V1 is expected to be responsible for the peak between 60 and 100ms.
     V2 is expected to be responsible for the peak between 100 and 150ms.
@@ -125,8 +128,10 @@ def evoked_timing(evoked_dir, task, subjects, stimuli):
 
     Returns
     -------
-    Tuple of two numpy arrays (V1, V2)
-        V1 and V2 timings in numpy arrays of form [n_stimuli, n_subjects]
+    V1 : numpy.ndarray
+        V1 timings as an array of form [n_stimuli, n_subjects]
+    V2 : numpy.ndarray
+        V2 timings as an array of form [n_stimuli, n_subjects]
     '''
 
     V1 = np.zeros((len(stimuli), len(subjects)))
@@ -152,7 +157,7 @@ def evoked_timing(evoked_dir, task, subjects, stimuli):
             print(subject, evoked.comment, '%.3f' % V1[evoked_idx, sub_idx],
                   '%.3f' % V2[evoked_idx, sub_idx])
         
-    return (V1, V2)
+    return V1, V2
 
 def medians(times, start = None, stop = None):
     '''
@@ -173,21 +178,24 @@ def medians(times, start = None, stop = None):
         Median peak times for each subject
     '''
 
-    times[times >= stop] = np.nan
-    times[times <= start] = np.nan
+    if stop:
+        times[times >= stop] = np.nan
+    if start:
+        times[times <= start] = np.nan
 
     return np.nanmedian(times, axis = 0)
 
-if mode == 'stc':
-    V1, V2 = stc_timing(stc_dir, src_spacing, stc_method, task, subjects, stimuli)
-elif mode == 'evoked':
-    V1, V2 = evoked_timing(evoked_dir, task, subjects, stimuli)
+if __name__ == "__main__":
+    if mode == 'stc':
+        V1, V2 = stc_timing(stc_dir, src_spacing, stc_method, task, subjects, stimuli)
+    elif mode == 'evoked':
+        V1, V2 = evoked_timing(evoked_dir, task, subjects, stimuli)
 
-# Output V1 and V2 arrays to csv files
-np.savetxt(output_dir + 'V1_timing_' + mode + '.csv', V1, delimiter = ',', fmt = '%.3f')
-np.savetxt(output_dir + 'V2_timing_' + mode + '.csv', V2, delimiter = ',', fmt = '%.3f')
+    # Output V1 and V2 arrays to csv files
+    np.savetxt(output_dir + 'V1_timing_' + mode + '.csv', V1, delimiter = ',', fmt = '%.3f')
+    np.savetxt(output_dir + 'V2_timing_' + mode + '.csv', V2, delimiter = ',', fmt = '%.3f')
 
-# Calculate subject-specific medians and save them in separate file
-V1_medians = medians(V1, start = 0.060, stop = 0.100)
-np.savetxt(output_dir + 'V1_medians_' + mode + '.csv', V1_medians,
-           delimiter = ',', fmt = '%.3f')
+    # Calculate subject-specific medians and save them in separate file
+    V1_medians = medians(V1, start = 0.060, stop = 0.100)
+    np.savetxt(output_dir + 'V1_medians_' + mode + '.csv', V1_medians,
+               delimiter = ',', fmt = '%.3f')

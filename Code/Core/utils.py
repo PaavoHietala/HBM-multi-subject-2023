@@ -281,6 +281,10 @@ def tabulate_geodesics(project_dir, src_spacing, stc_method, task, stimuli,
         Subject for which the distances are calculated, by default 'fsaverage'
     mode : str, optional
         Stc type, either 'stc', 'stc_m' or 'avg', by default 'avg'
+
+    Returns
+    -------
+    None.
     '''
 
     suffix = suffix.lstrip('0123456789')
@@ -338,3 +342,34 @@ def tabulate_geodesics(project_dir, src_spacing, stc_method, task, stimuli,
     
     np.savetxt(project_dir + 'Data/plot/distances_' + subject + '_' + mode + '.csv',
                distances, delimiter = ',', fmt = '%.3f')
+
+def crop_whitespace(img, borders_only = False):
+    '''
+    Crops white rows and columns from given image.
+
+    Parameters
+    ----------
+    img : numpy.ndarray
+        Image to crop, e.g. a screenshot of the brain or colorbar
+    borders_only : bool
+        Retain whitespace inside the image, e.g. between colorbar and units
+    
+    Returns
+    -------
+    cropped_img : numpy.ndarray
+        Cropped image
+    '''
+
+    nonwhite_pix = (img != 255).any(-1)
+    nonwhite_rows = nonwhite_pix.any(1)
+    nonwhite_cols = nonwhite_pix.any(0)
+
+    # Set white rows and cols nonwhite if they are inside nonwhite pixels
+    if borders_only:
+        for axis in [nonwhite_rows, nonwhite_cols]:
+            axis_ids = np.where(axis == True)[0]
+            axis[axis_ids[0] : axis_ids[-1]] = True
+
+    cropped_img = img[nonwhite_rows][:, nonwhite_cols]
+
+    return cropped_img

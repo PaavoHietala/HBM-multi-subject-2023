@@ -1,5 +1,12 @@
 '''
-This script plots the 8x3 source estimate grids in Results.
+This script plots the 8x3 source estimate grids in Figures 5-7. The script
+has to be run separately for each figure, changing the script settings in
+between.
+
+The output image grid is saved to
+<project_dir>/Data/plot/EstimateGrid-<method>_<stc_type>_<suffix>.png
+And the grid with the colorbar attached to
+<project_dir>/Data/plot/EstimateGrid-<method>_<stc_type>_<suffix>-cb.png
 '''
 
 import os.path as op
@@ -7,20 +14,21 @@ import numpy as np
 import mne
 import sys
 import matplotlib.pyplot as plt
-from PIL import Image, ImageChops
+from PIL import Image
 from io import BytesIO
 
 sys.path.append(op.dirname(op.dirname(op.realpath(__file__))))
 from Core import utils
 
-from mpl_toolkits.axes_grid1 import (make_axes_locatable, ImageGrid,
-                                     inset_locator)
+from mpl_toolkits.axes_grid1 import (make_axes_locatable)
+
+# Script settings --------------------------------------------------------------
 
 # Root data directory of the project, str
 
 project_dir = '/m/nbe/scratch/megci/MFinverse/Classic/Data/'
 
-# Subjects' MRI location, str
+# Subjects' MRI location (FreeSurfer's subject dir), str
 
 subjects_dir = '/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/'
 mne.set_config('SUBJECTS_DIR', subjects_dir)
@@ -56,28 +64,30 @@ method = 'eLORETA'
 
 # V1 freesurfer label location
 
-label_fpath_lh = '/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/fsaverage/label/lh.V1_exvivo.label'
-label_fpath_rh = '/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/fsaverage/label/rh.V1_exvivo.label'
+label_fpath_lh = subjects_dir + 'fsaverage/label/lh.V1_exvivo.label'
+label_fpath_rh = subjects_dir + 'fsaverage/label/rh.V1_exvivo.label'
 
-#
 # Run the script ---------------------------------------------------------------
-#
 
-fpath_out = op.join(project_dir, 'plot', '-'.join(['EstimateGrid', method, stc_type, suffix]) + '.png')
+fpath_out = op.join(project_dir, 'plot', f'EstimateGrid-{method}-{stc_type}-{suffix}.png')
 
 stcs = []
-
 abs_max = 0
 abs_min_max = 1e10
 abs_min = 1e100
+
 for stim in stims:
+    # Load the source estimate to the list of stcs
     if stc_type == 'avg':
         fname_stc = '-'.join([subject, src_spacing, method, 'f', stim, suffix])
     else:
-        fname_stc = '-'.join([og_subject, src_spacing, method, subject, 'f', stim, suffix])
+        fname_stc = '-'.join([og_subject, src_spacing, method, subject, 'f',
+                              stim, suffix])
     fpath_stc = op.join(project_dir, stc_type, fname_stc)
     stc = mne.read_source_estimate(fpath_stc, subject = subject)
     stcs.append(stc)
+
+    # Get maximum and minimum amplitudes for thresholding/colorbars
     if np.max(abs(stc.data)) > abs_max:
         abs_max = np.max(abs(stc.data))
     if np.max(abs(stc.data)) < abs_min_max:
@@ -86,7 +96,6 @@ for stim in stims:
         abs_min = np.min(abs(stc.data)[np.nonzero(stc.data)])
 
 fig, axes = plt.subplots(nrows = 8, ncols = 3, figsize = (8, 24))
-                         #gridspec_kw = {'height_ratios' : [1] * 8 + [0.00001]})
 
 # Set colorbar properties depending on the data type (averaged or not)
 if method == 'remtw' and stc_type == 'stc_m':
@@ -102,8 +111,8 @@ for row_idx in range(0,8):
 
         stc = stcs[stim_idx]
         
-        peaks, peak_hemis = utils.find_peaks(project_dir, src_spacing, method, 'f',
-                                             [stims[stim_idx]], bilaterals,
+        peaks, peak_hemis = utils.find_peaks(project_dir, src_spacing, method,
+                                             'f', [stims[stim_idx]], bilaterals,
                                              suffix, stc = stc)
 
         # Set one point to very low value in remtw to avoid
@@ -134,27 +143,21 @@ for row_idx in range(0,8):
         brain.show_view({'elevation' : 100, 'azimuth' : -120}, distance = 400, col = 1)
         screenshot = brain.screenshot()
         brain.close()
-
-        nonwhite_pix = (screenshot != 255).any(-1)
-        nonwhite_row = nonwhite_pix.any(1)
-        nonwhite_col = nonwhite_pix.any(0)
-        cropped_screenshot = screenshot[nonwhite_row][:, nonwhite_col]
+        cropped_screenshot = utils.crop_whitespace(screenshot)
 
         axes[row_idx][col_idx].imshow(cropped_screenshot)
         axes[row_idx][col_idx].axis('off')
 
-# Save image
 plt.tight_layout()     
 plt.savefig(fpath_out, bbox_inches = 'tight', pad_inches = 0.0, dpi = 300)
 
-#
-# Create colorbar --------------------------------------------------------------
-#
+# Create a separate colorbar ---------------------------------------------------
 
 fig, ax = plt.subplots(figsize = (3, 4))
 ax.axis('off')
 divider = make_axes_locatable(ax)
 cax = divider.append_axes('bottom', size = '5%', pad = 0.2)
+
 cbar = mne.viz.plot_brain_colorbar(cax, clim = clim, orientation = 'horizontal',
                                    label = 'Activation (Am)')
 cbar.ax.tick_params(labelsize = 12)
@@ -175,25 +178,17 @@ cbar.outline.set_visible(True)
 plt.tight_layout()
 
 # Save colorbar to buffer
-
 buf = BytesIO()
 fig.savefig(buf, dpi = 300)
 buf.seek(0)
 cb = Image.open(buf)
-cb.load()
 
 # Crop whitespace around the colorbar
 screenshot = np.asarray(cb)
-nonwhite_pix = (screenshot != 255).any(-1)
-nonwhite_row = nonwhite_pix.any(1)
-nonwhite_indices = np.where(nonwhite_row == True)[0]
-nonwhite_row[nonwhite_indices[0] : nonwhite_indices[-1]] = True
-
-nonwhite_col = nonwhite_pix.any(0)
-cropped_screenshot = screenshot[nonwhite_row][:, nonwhite_col]
+cropped_screenshot = utils.crop_whitespace(screenshot, borders_only = True)
 cb = Image.fromarray(cropped_screenshot)
 
-# Load grid and join with cb
+# Load the source estimate grid and add colorbar to the bottom of the image
 grid = Image.open(fpath_out)
 
 w, h = zip(*(i.size for i in [grid, cb]))

@@ -25,7 +25,7 @@ def mat_to_mne_Evoked(mat_files, raw_files, results, tasks, arr_key = 'estimate'
     tmin : float
         Start of the averaged response in relation to the stimulus, default: 0
     nave : int
-        Number of averaged responses (epochs), default : 1
+        Number of averaged responses (epochs), default: 1
 
     Returns
     -------

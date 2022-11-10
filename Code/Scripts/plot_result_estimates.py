@@ -3,9 +3,10 @@
 """
 Created on Wed Jun 16 16:31:07 2021
 
-Plot source estimates for Figure 4.
+Produces all 9 source estimates for Figure 4: Source estimates.
+First, 3 eLORETA images are plotted followed by 3 reMTW and 3 reMTW & AVG plots.
 
-Adapted from https://mne.tools/stable/auto_examples/visualization/publication_figure.html
+Plots are saved to <project_dir>/Data/plot/<filename of stc>.png
 
 @author: hietalp2
 """
@@ -16,8 +17,8 @@ import numpy as np
 from PIL import Image
 from io import BytesIO
 import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import (make_axes_locatable, ImageGrid,
-                                     inset_locator)
+from mpl_toolkits.axes_grid1 import (make_axes_locatable)
+
 import sys
 import mne
 
@@ -25,11 +26,6 @@ sys.path.append(op.dirname(op.dirname(op.realpath(__file__))))
 from Core import utils
 
 # Script settings --------------------------------------------------------------
-#
-# Produces all 9 source estimates for Figure 4: Source estimates.
-# First, 3 eLORETA images are plotted followed by 3 reMTW and 3 reMTW & AVG plots.
-#
-# Plots are saved to <project_dir>/Data/plot/<filename of stc>
 
 # Root data directory for each source estimate, list of str
 
@@ -53,34 +49,34 @@ stims = ['sector16'] * 9
 
 methods = ['eLORETA'] * 3 + ['remtw'] * 6
 
-# Suffixes of stcs, can be None for indiviudal stcs
+# Suffixes of stcs, can be None for individual stcs
 
 suffixes = [None, '10subjects', '20subjects'] \
            + ['1subjects', '10subjects', '20subjects'] * 2
 
-# Types of each stc. stc (individual), stc_m (individual on fsaverage mesh) or
-# avg (averaged data on fsaverage mesh)
+# Types of each stc. 'stc' (individual), 'stc_m' (individual on fsaverage mesh)
+# or 'avg' (averaged data on fsaverage mesh)
 
 stc_types = ['stc_m', 'avg', 'avg'] + ['stc_m'] * 3 + ['avg'] * 3
             
-# Target source space of stc_m and avg, usually fsaverage
+# Target source space of the morphing in stc_m and avg, usually 'fsaverage'
 
 src_tos = ['fsaverage', None, None] + ['fsaverage'] * 3 + [None, None, None]
 
-# Get peak for selected time only
+# Get peak for selected time only (used only if the stc has multiple timepoints)
 
 time = 0.081
 
 # Plot colorbar from 0 to max (abs) or from -max to +max (bi), abs to separate
 # file (sep), bi to separate file (bisep) or None
 
-cbars = [None, None, 'sep'] + ['bisep'] * 3 + ['sep'] * 3
+cbars = ['sep', None, None] + ['bisep'] * 3 + ['sep'] * 3
 
 # Overwrite existing files
 
 overwrite = True
 
-# Custom clims, mainly for eLORETA to set all 6 to same limits
+# Custom clims, mainly for eLORETA to set all 3 to same limits
 
 abs_max = 0
 for stim, suffix in zip(stims[:3], suffixes[:3]):
@@ -92,9 +88,7 @@ for stim, suffix in zip(stims[:3], suffixes[:3]):
 
 clims = [{'kind' : 'value', 'lims' : [0, 0.5 * abs_max, abs_max]}] * 3 + [None] * 6
 
-#
 # Run the script for all data --------------------------------------------------
-#
 
 mne.set_config('SUBJECTS_DIR', subjects_dir)
 
@@ -103,7 +97,8 @@ def plot_result_estimates(subject, stim, method, project_dir, suffix = None,
                           cbar_type = 'abs', overwrite = False,
                           clim = None):
     '''
-    Monster of a function to plot source estimates.
+    Monster of a function to plot source estimates with or without colorbars or
+    source estimates & colorbars in separate files.
 
     Parameters
     ----------
@@ -121,15 +116,19 @@ def plot_result_estimates(subject, stim, method, project_dir, suffix = None,
         Stc type, either 'stc', 'stc_m' or 'avg', by default 'stc'
     src_to : str, optional
         Mesh to which the stc was morphed beforehand (what mesh to actually draw
-        the plot on IF the stc has been morphed), by default 'fsaverage', None
-        if the stc has not been morphed.
+        the plot on IF the stc has been morphed), None if the stc has not been
+        morphed. The default is 'fsaverage'.
     cbar_type : str, optional
-        Color bar type, either 'abs' for positive only or 'bi' for neg-0-pos,
-        by default 'abs'
+        Colorbar type, either 'abs' for positive only or 'bi' for neg-0-pos,
+        by default 'abs'. 'sep' and 'bisep' for separate CB files respectively.
     overwrite : bool, optional
         Overwrite existing files switch. The default is False.
     clim : dict, optional
-        Clims for the color bar, by default None for automatic clims
+        Clims for the color bar, by default None for automatic clims.
+    
+    Returns
+    -------
+    None.
     '''
 
     # Load source estimate
@@ -138,6 +137,7 @@ def plot_result_estimates(subject, stim, method, project_dir, suffix = None,
     fpath_stc = op.join(project_dir, 'Data', stc_type, fname_stc)
 
     fpath_out = op.join(project_dir, 'Data', 'plot', fname_stc + '.png')
+
     if not overwrite and op.isfile(fpath_out):
         print('File ' + fpath_stc + ' exists and overwrite = False, skipping\n')
         return
@@ -145,8 +145,8 @@ def plot_result_estimates(subject, stim, method, project_dir, suffix = None,
     print('Reading', fpath_stc)
     stc = mne.read_source_estimate(fpath_stc)
 
-    # Set one point to very low value in remtw to avoid
-    # all-blue plot caused by all-zero estimate
+    # Set one point to very low value in remtw to avoid an all-blue plot caused
+    # by an all-zero estimate
     if method == 'remtw':
         if np.count_nonzero(stc.lh_data) == 0:
             stc.lh_data[0] = 1e-20
@@ -155,17 +155,17 @@ def plot_result_estimates(subject, stim, method, project_dir, suffix = None,
         
     # Plot the STC with V1 borders:
     brain = stc.plot(hemi='split', size=(1500,600),
-                     subject = ( src_to if stc_type == 'stc_m' else subject),
+                     subject = (src_to if stc_type == 'stc_m' else subject),
                      initial_time = (time if stc.data.shape[1] > 1 else None),
                      background = 'w', colorbar = False,
                      time_viewer = False, show_traces = False,
                      clim = (clim if clim else 'auto'))
     
     # Add peak foci
-    bilaterals = ['sector3', 'sector7', 'sector11', 'sector15', 'sector19', 'sector23']
+    bilaterals = [f'sector{n}' for n in [3, 7, 11, 15, 19, 23]]
     peaks, peak_hemis = utils.find_peaks(project_dir, 'ico4', method, 'f',
-                                         [stim], bilaterals,
-                                         suffix, stc = stc, time = time)
+                                         [stim], bilaterals, suffix, stc = stc,
+                                         time = time)
     print(peaks, peak_hemis, stim, bilaterals)
 
     for peak, hemi in zip(peaks, peak_hemis):
@@ -194,16 +194,12 @@ def plot_result_estimates(subject, stim, method, project_dir, suffix = None,
                             'fsaverage')
         brain.add_label(v1, borders = 2, color = 'lime')
 
-    # Crop whitespace around the brain
+    # Rotate the brain, take a snapshot and remove all white rows / columns
     brain.show_view({'elevation' : 100, 'azimuth' : -60}, distance = 400, col = 0)
     brain.show_view({'elevation' : 100, 'azimuth' : -120}, distance = 400, col = 1)
     screenshot = brain.screenshot()
+    cropped_screenshot = utils.crop_whitespace(screenshot)
     brain.close()
-
-    nonwhite_pix = (screenshot != 255).any(-1)
-    nonwhite_row = nonwhite_pix.any(1)
-    nonwhite_col = nonwhite_pix.any(0)
-    cropped_screenshot = screenshot[nonwhite_row][:, nonwhite_col]
 
     # Tweak the figure style
     plt.rcParams.update({
@@ -275,31 +271,22 @@ def plot_result_estimates(subject, stim, method, project_dir, suffix = None,
     # Save image        
     if cbar_type in ['sep', 'bisep']:
         plt.tight_layout()
-        
+
         # Save colorbar to buffer
         buf = BytesIO()
         fig.savefig(buf, dpi = 500)
         buf.seek(0)
         cb = Image.open(buf)
-        cb.load()
 
         # Crop whitespace around the colorbar
-        screenshot = np.asarray(cb)
-        nonwhite_pix = (screenshot != 255).any(-1)
-        nonwhite_row = nonwhite_pix.any(1)
-        nonwhite_indices = np.where(nonwhite_row == True)[0]
-        nonwhite_row[nonwhite_indices[0] : nonwhite_indices[-1]] = True
-
-        nonwhite_col = nonwhite_pix.any(0)
-        cropped_screenshot = screenshot[nonwhite_row][:, nonwhite_col]
-        cb = Image.fromarray(cropped_screenshot)
+        crop_sc = utils.crop_whitespace(np.asarray(cb), borders_only = True)
+        cb = Image.fromarray(crop_sc)
 
         cb.save(fpath_out)
     else:
         plt.savefig(fpath_out, bbox_inches = 'tight', pad_inches = 0.0)
 
-for subject, stim, method, project_dir, suffix, stc_type, src_to, cbar_type, clim \
-    in zip(subjects, stims, methods, project_dirs, suffixes, stc_types, src_tos,
-           cbars, clims):
-    plot_result_estimates(subject, stim, method, project_dir, suffix, stc_type,
-                          src_to, cbar_type, overwrite = overwrite, clim = clim)
+for i in range(len(subjects)):
+    plot_result_estimates(subjects[i], stims[i], methods[i], project_dirs[i],
+                          suffixes[i], stc_types[i], src_tos[i], cbars[i],
+                          overwrite = overwrite, clim = clims[i])
