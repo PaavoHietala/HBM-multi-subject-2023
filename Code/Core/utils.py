@@ -148,9 +148,9 @@ def average_stcs_source_space(subjects, project_dir, src_spacing, stc_method,
                 fname_m = get_fname(subject, 'stc_m', stc_method = stc_method,
                                     src_spacing = src_spacing, task = task,
                                     stim = stim,
-                                    suffix = (suffix if stc_method == 'remtw' else None))
+                                    suffix = (suffix if stc_method == 'remtw'
+                                                     else None))
                 fpath_m = os.path.join(project_dir, 'Data', 'stc_m', fname_m)
-                print(fpath_m)
                 stcs.append(mne.read_source_estimate(fpath_m))
             
             # Set the first stc as base and add all others to it, divide by n
@@ -164,17 +164,15 @@ def average_stcs_source_space(subjects, project_dir, src_spacing, stc_method,
                                    include_tmax = True).copy()
                 avg.data = abs(avg.data)
                 for i in range(1, len(subjects)):
-                    avg.data += abs(stcs[i].crop(tmin = timing[i], tmax = timing[i],
+                    avg.data += abs(stcs[i].crop(tmin = timing[i],
+                                                 tmax = timing[i],
                                                  include_tmax = True).data)
             avg.data = avg.data / len(subjects)
-            
-            # Save to disk
-            print(fpath)
             avg.save(fpath)
 
 def find_peaks(project_dir, src_spacing, stc_method, task, stimuli, bilaterals,
-               suffix, return_index = False, subject = 'fsaverage', mode = 'avg',
-               stc = None, time = None):
+               suffix, return_index = False, subject = 'fsaverage',
+               mode = 'avg', stc = None, time = None):
     '''
     Find peak indices and hemispheres for averaged stc files
 
@@ -199,7 +197,7 @@ def find_peaks(project_dir, src_spacing, stc_method, task, stimuli, bilaterals,
     subject : str
         Name of the subject the stc is for, defaults to fsaverage
     mode : str
-        Type of stc, can be either stc, stc_m or avg. Defaults to avg
+        Type of stc, can be either 'stc', 'stc_m' or 'avg'. Defaults to 'avg'
     stc : mne.SourceEstimate
         If source estimate is given, skip loading it again.
     time : float
@@ -249,7 +247,7 @@ def find_peaks(project_dir, src_spacing, stc_method, task, stimuli, bilaterals,
     return (peaks, peak_hemis)
 
 def tabulate_geodesics(project_dir, src_spacing, stc_method, task, stimuli,
-                       bilaterals, suffix, overwrite, counts = [1, 5, 10, 15, 20],
+                       bilaterals, suffix, counts = [1, 5, 10, 15, 20],
                        subject = 'fsaverage', mode = 'avg'):
     '''
     Compute geodesic distances between peaks and the V1 label vertices and
@@ -272,8 +270,6 @@ def tabulate_geodesics(project_dir, src_spacing, stc_method, task, stimuli,
         Names of bilateral stimuli
     suffix : str
         Suffix to append to the end of the output filename.
-    overwrite : bool, optional
-        Overwrite existing files switch. The default is False.
     counts : list, optional
         List of subject counts to calculate the distances for,
         by default [1, 5, 10, 15, 20]

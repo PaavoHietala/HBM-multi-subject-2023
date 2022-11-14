@@ -79,15 +79,17 @@ def calculate_bem_solution(subject, overwrite):
     # Create both 1-layer and 3-layer BEM solution
     for layers in cond:
         fname = get_fname(subject, 'bem', layers = str(layers))
-        fpath = os.path.join(mne.get_config('SUBJECTS_DIR'), subject, 'bem', fname)
+        fpath = os.path.join(mne.get_config('SUBJECTS_DIR'), subject, 'bem',
+                             fname)
 
         if overwrite or not os.path.isfile(fpath):
-            bem = mne.make_bem_model(subject, ico = None, conductivity = cond[layers])
+            bem = mne.make_bem_model(subject, ico = None,
+                                     conductivity = cond[layers])
             bem = mne.make_bem_solution(bem)
             mne.write_bem_solution(fpath, bem, overwrite = True)
     
-def calculate_forward_solution(subject, project_dir, src_spacing, bem, raw, coreg,
-                               overwrite = False):
+def calculate_forward_solution(subject, project_dir, src_spacing, bem, raw,
+                               coreg, overwrite = False):
     '''
     Calculate MEG forward solution with given parameters and save it in
     <project_dir>/Data/fwd/
@@ -121,8 +123,8 @@ def calculate_forward_solution(subject, project_dir, src_spacing, bem, raw, core
         fname_src = get_fname(subject, 'src', src_spacing = src_spacing)
         src = mne.read_source_spaces(os.path.join(project_dir, 'Data', 'src',
                                      fname_src))
-        fwd = mne.make_forward_solution(raw, trans = coreg, src = src, bem = bem,
-                                        meg = True, eeg = False)
+        fwd = mne.make_forward_solution(raw, trans = coreg, src = src,
+                                        bem = bem, meg = True, eeg = False)
 
         mne.write_forward_solution(fpath_fwd, fwd, overwrite = True)
 
@@ -208,6 +210,7 @@ def morph_to_fsaverage(subject, project_dir, src_spacing, stc_method,
         
         if overwrite or not os.path.isfile(fpath_stc_m + '-lh.stc'):
             morph = mne.compute_source_morph(stcs[stim], subject_from = subject,
-                                             subject_to = 'fsaverage', src_to = src)
+                                             subject_to = 'fsaverage',
+                                             src_to = src)
             stc_m = morph.apply(stcs[stim])
             stc_m.save(fpath_stc_m)

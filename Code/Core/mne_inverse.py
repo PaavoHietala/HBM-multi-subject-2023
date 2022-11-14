@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Functions used exclusively for minimum norm inverse solutions.
+Functions used exclusively for minimum-norm inverse solutions (=eLORETA).
 
 Created on Tue March 30 15:22:35 2021
 
@@ -12,7 +12,8 @@ import os
 import mne
 from .utils import get_fname
 
-def construct_inverse_operator(subject, project_dir, raw, src_spacing, overwrite = False):
+def construct_inverse_operator(subject, project_dir, raw, src_spacing,
+                               overwrite = False):
     '''
     Construct MNE inverse operator from forward solution and save it in
     <project_dir>/Data/inv/
@@ -35,7 +36,8 @@ def construct_inverse_operator(subject, project_dir, raw, src_spacing, overwrite
     None.
     '''
     
-    fname_inv = get_fname(subject, 'inv', src_spacing = src_spacing, fname_raw = raw)
+    fname_inv = get_fname(subject, 'inv', src_spacing = src_spacing,
+                          fname_raw = raw)
     fpath_inv = os.path.join(project_dir, 'Data', 'inv', fname_inv)
     
     if overwrite or not os.path.isfile(fpath_inv):
@@ -43,21 +45,25 @@ def construct_inverse_operator(subject, project_dir, raw, src_spacing, overwrite
         info = mne.io.Raw(raw).info
     
         fname_cov = get_fname(subject, 'cov', fname_raw = raw)
-        noise_cov = mne.read_cov(os.path.join(project_dir, 'Data', 'cov', fname_cov))
+        noise_cov = mne.read_cov(os.path.join(project_dir, 'Data', 'cov',
+                                              fname_cov))
         
         fname_fwd = get_fname(subject, 'fwd', src_spacing = src_spacing)
-        fwd = mne.read_forward_solution(os.path.join(project_dir, 'Data', 'fwd', fname_fwd))
+        fwd = mne.read_forward_solution(os.path.join(project_dir, 'Data', 'fwd', 
+                                        fname_fwd))
         
         # Constrain the dipoles to surface normals
-        mne.convert_forward_solution(fwd, surf_ori = True, use_cps = True, copy = False)
+        mne.convert_forward_solution(fwd, surf_ori = True, use_cps = True,
+                                     copy = False)
         
         # Calculate and save the inverse operator and save it to disk
-        inv = mne.minimum_norm.make_inverse_operator(info, fwd, noise_cov, loose = 0.2,
-                                                     depth = 0.8)
+        inv = mne.minimum_norm.make_inverse_operator(info, fwd, noise_cov,
+                                                     loose = 0.2, depth = 0.8)
         mne.minimum_norm.write_inverse_operator(fpath_inv, inv)
     
-def estimate_source_timecourse(subject, project_dir, raw, src_spacing, stc_method,
-                               fname_evokeds, task, stimuli, overwrite = False):
+def estimate_source_timecourse(subject, project_dir, raw, src_spacing,
+                               stc_method, fname_evokeds, task, stimuli,
+                               SNR = 2, overwrite = False):
     '''
     Estimate surface time courses for all evoked responses in the evoked file
     and save them individually in <project_dir>/Data/stc/
@@ -78,8 +84,10 @@ def estimate_source_timecourse(subject, project_dir, raw, src_spacing, stc_metho
         Full path to the file containing the evoked responses.
     task: str
         Task in the estimated stcs, e.g. 'f'.
-    stimuli: list of str
+    stimuli : list of str
         List of stimuli for whcih the stcs are estimated.
+    SNR : float
+        Estimated SNR of the responses. The default is 2.
     overwrite : bool, optional
         Overwrite existing files switch. The default is False.
 
@@ -87,24 +95,26 @@ def estimate_source_timecourse(subject, project_dir, raw, src_spacing, stc_metho
     -------
     None.
     '''
-    
-    SNR = 2
+
     lambda2 = 1.0 / SNR ** 2
     
     # Load the inverse operator and evoked responses
-    fname_inv = get_fname(subject, 'inv', src_spacing = src_spacing, fname_raw = raw)
-    inv = mne.minimum_norm.read_inverse_operator(os.path.join(project_dir, 'Data',
-                                                              'inv', fname_inv))
+    fname_inv = get_fname(subject, 'inv', src_spacing = src_spacing,
+                          fname_raw = raw)
+    inv = mne.minimum_norm.read_inverse_operator(os.path.join(project_dir,
+                                                              'Data', 'inv',
+                                                              fname_inv))
     
     evokeds = mne.read_evokeds(fname_evokeds)
     
     # Calculate stc for each stimulus response individually
-    for idx, stim in enumerate(stimuli):
-        # Evokeds has sectors 1-24 but stimuli might not, pick based on stim number
+    for stim in stimuli:
+        # Evokeds has sectors 1-24 but the list <stimuli> might not,
+        # pick individual evoked responses based on stimulus name
         evoked = evokeds[int(stim[6:]) - 1]
 
         fname_stc = get_fname(subject, 'stc', src_spacing = src_spacing,
-                              stc_method = stc_method, task = task, stim=stim)
+                              stc_method = stc_method, task = task, stim = stim)
         fpath_stc = os.path.join(project_dir, 'Data', 'stc', fname_stc)
         
         if overwrite or not os.path.isfile(fpath_stc + '-lh.stc'):

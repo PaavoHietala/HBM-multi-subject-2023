@@ -82,25 +82,26 @@ def group_inversion(subjects, project_dir, src_spacing, stc_method, task, stim,
         # Find 0.5 * alpha_max, where alpha_max spreads activation everywhere
         if 'alpha' not in solver_kwargs or solver_kwargs['alpha'] == None:
             print('Finding optimal alpha for ' + stim)
-            alpha = reMTW_find_alpha(fwds, evokeds, noise_covs, stim, project_dir,
-                                     copy.deepcopy(solver_kwargs), info = info,
-                                     suffix = suffix)
+            alpha = reMTW_find_alpha(fwds, evokeds, noise_covs, stim,
+                                     project_dir, copy.deepcopy(solver_kwargs),
+                                     info = info, suffix = suffix)
             solver_kwargs['alpha'] = alpha
         
         # Find beta which produces exactly <target> active source points
         if 'beta' not in solver_kwargs or solver_kwargs['beta'] == None:
             print('Finding optimal beta for ' + stim)
-            stcs, _ = reMTW_find_beta(fwds, evokeds, noise_covs, stim, project_dir,
-                                      target, solver_kwargs, info = info,
-                                      suffix = suffix)
+            stcs, _ = reMTW_find_beta(fwds, evokeds, noise_covs, stim,
+                                      project_dir, target, solver_kwargs,
+                                      info = info, suffix = suffix)
         
         # Everything has been set beforehand, just run the inversion
         else:
-            # Try 5 times to get a solid estimate, if fails 5 times return without
-            # writing stcs to file.
+            # Try 5 times to get a solid estimate, if fails 5 times return
+            # without writing stcs to file.
             for i in range(5):
                 try:
-                    stcs, _ = reMTW_wrapper(fwds, evokeds, noise_covs, solver_kwargs)
+                    stcs, _ = reMTW_wrapper(fwds, evokeds, noise_covs,
+                                            solver_kwargs)
                     break
                 except ValueError as e:
                     print("Beta=" + str(solver_kwargs['beta'])
@@ -116,7 +117,7 @@ def group_inversion(subjects, project_dir, src_spacing, stc_method, task, stim,
     print(stcs)
     for i, stc in enumerate(stcs):
         fname_stc = get_fname(subjects[i], 'stc', src_spacing = src_spacing,
-                              stc_method = stc_method, task = task, stim=stim,
+                              stc_method = stc_method, task = task, stim = stim,
                               suffix = suffix)
         fpath_stc = os.path.join(project_dir, 'Data', 'stc', fname_stc)
         print(fpath_stc)

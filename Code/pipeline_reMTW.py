@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Pipeline utilizing the Janati et al. (2020) reweighted Minimum Wasserstein Estimate
-(MWE0.5 or reMTW).
+Pipeline utilizing the Janati et al. (2020) reweighted Minimum Wasserstein
+Estimates (MWE0.5 or reMTW).
 
 Created on Tue Feb  2 15:31:30 2021
 
@@ -19,15 +19,15 @@ from datetime import datetime
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 from Core import mne_common, solvers, utils, visualize, reMTW
 
-from groupmne import compute_group_inverse, prepare_fwds
-from mutar.utils import  groundmetric
+from groupmne import prepare_fwds
 
 print(datetime.now().strftime("%D.%M.%Y %H:%M:%S"),
       "Started pipeline_reMTW with parameters", sys.argv[1:])
 
 ### Parameters -----------------------------------------------------------------
 
-# Root data directory of the project, str
+# Root data directory of the project. Use a different folder for each
+# pipeline, e.g. .../MFinverse/Classic/ and .../MFinverse/reMTW/
 
 project_dir = '/m/nbe/scratch/megci/MFinverse/reMTW/'
 
@@ -40,11 +40,11 @@ mne.set_config('SUBJECTS_DIR', subjects_dir)
 # list of str 
 
 exclude = [5, 8, 13, 15]
-subjects = ['MEGCI_S' + str(idx) for idx in list(range(1,25)) if idx not in exclude]
+subjects = [f'MEGCI_S{id}' for id in list(range(1, 25)) if id not in exclude]
 
 # Get foci and geodesics results from individual subject ("Single-subject MWE"),
-# e.g. 'MEGCI_S1' instead of average if this value is set to str instead of None.
-# None produces averaged results ("MWE with source-space averaging").
+# e.g. 'MEGCI_S1'. None produces averaged results ("MWE with source-space
+# averaging").
 
 solo_subject = None
 
@@ -52,8 +52,9 @@ solo_subject = None
 
 src_spacing = 'ico4'
 
-# Which BEM model to use for forward solution, the BEM filename is expected to be
-# <subject name> + <bem_suffix>.fif, str
+# Which BEM model to use for forward solution. Naming convention for BEM
+# files is <subject name> + <bem_suffix>.fif as created in the step
+# calculate_bem_solution, str
 
 bem_suffix = '-1-shell-bem-sol'
 
@@ -62,40 +63,43 @@ bem_suffix = '-1-shell-bem-sol'
 
 stc_method = 'remtw'
 
-# Which task is currently investigated, str
+# Which task is currently investigated. Used as a suffix in file names,
+# can also be 'None' if task suffix is not desired. str
 
 task = 'f'
 
 # Which stimuli to analyze, sectors 1-24 available, list of str
 
-stimuli = ['sector' + str(num) for num in range(1,25)]
+stimuli = [f'sector{num}' for num in range(1, 25)]
 
 # List of raw rest files for covariance matrix and extracting sensor info,
 # list of str
 
-rest_raws = ['/m/nbe/scratch/megci/data/MEG/megci_rawdata_mc_ic/' + subject.lower()
-             + '_mc/rest1_raw_tsss_mc_transOHP_blinkICremoved.fif' for subject in subjects]
+rest_raws = ['/m/nbe/scratch/megci/data/MEG/megci_rawdata_mc_ic/' + s.lower()
+             + '_mc/rest1_raw_tsss_mc_transOHP_blinkICremoved.fif' for s in subjects]
 
 # List of MEG/MRI coregistration files for forward solution, list of str
 
-coreg_files = ['/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/' + subject + 
-               '/mri/T1-neuromag/sets/COR-ahenriks.fif' for subject in subjects]
+coreg_files = ['/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/' + s + 
+               '/mri/T1-neuromag/sets/COR-ahenriks.fif' for s in subjects]
 
 # List of evoked response files for source activity estimate, list of str
 
 evoked_files = [os.path.join(project_dir, 'Data', 'Evoked') + subject
                 + '_f-ave.fif' for subject in subjects]
 
-# List of matplotlib colors for each stimulus area, colors are used in foci plots,
-# colors_ecc in eccentricity-based plots and colors_polar in polar angle -based
-# plots, list of str
+# List of matplotlib colors for each stimulus area, colors are used in peak
+# foci plots, colors_ecc in eccentricity-based plots and colors_polar in
+# polar angle -based plots, list of str
 
-colors = ['mistyrose', 'plum', 'thistle', 'lightsteelblue', 'lightcyan', 'lightgreen',
-          'lightyellow', 'papayawhip', 'lightcoral', 'violet', 'mediumorchid', 'royalblue',
-          'aqua', 'mediumspringgreen', 'khaki', 'navajowhite', 'red', 'purple',
-          'blueviolet', 'blue', 'turquoise', 'lime', 'yellow', 'orange']
+colors = ['mistyrose', 'plum', 'thistle', 'lightsteelblue', 'lightcyan',
+          'lightgreen', 'lightyellow', 'papayawhip', 'lightcoral', 'violet',
+          'mediumorchid', 'royalblue', 'aqua', 'mediumspringgreen', 'khaki',
+          'navajowhite', 'red', 'purple', 'blueviolet', 'blue', 'turquoise',
+          'lime', 'yellow', 'orange']
 colors_ecc = ['blue'] * 8 + ['yellow'] * 8 + ['red'] * 8
-colors_polar = ['cyan', 'indigo', 'violet', 'magenta', 'red', 'orange', 'yellow', 'green'] * 3
+colors_polar = ['cyan', 'indigo', 'violet', 'magenta', 'red', 'orange',
+                'yellow', 'green'] * 3
 
 # Overwrite existing files, bool
 
@@ -103,7 +107,8 @@ overwrite = True
 
 # List of stimuli that should show response on both hemispheres, list of str
 
-bilaterals = ['sector3', 'sector7', 'sector11', 'sector15', 'sector19', 'sector23']
+bilaterals = ['sector3', 'sector7', 'sector11',
+              'sector15', 'sector19', 'sector23']
 
 # How many average active source points are we aiming for, int
 
@@ -133,10 +138,10 @@ steps = {'prepare_directories' :        False,
          'compute_covariance_matrix' :  False,
          'estimate_source_timecourse' : False,
          'morph_to_fsaverage' :         False,
-         'average_stcs_source_space' :  True,
+         'average_stcs_source_space' :  False,
          'plot_eccentricity_foci' :     False,
          'plot_polar_foci' :            False,
-         'tabulate_geodesics' :         True}
+         'tabulate_geodesics' :         False}
 
 ### Run the pipeline -----------------------------------------------------------
 
@@ -148,6 +153,7 @@ tenplot = False
 start = 0.08
 stop = 0.08
 concomitant = False
+
 for arg in sys.argv[1:]:
     if arg.startswith('-stim='):
         stimuli = arg[6:].split(',')
@@ -183,16 +189,16 @@ if steps['prepare_directories']:
 
 # Compute source space for fsaverage before subjects
 if steps['compute_source_space']:
-    mne_common.compute_source_space('fsaverage', project_dir, src_spacing, overwrite,
-                                    add_dist = True)
+    mne_common.compute_source_space('fsaverage', project_dir, src_spacing,
+                                    overwrite, add_dist = True)
 
 # Following steps are run on per-subject basis
 for idx, subject in enumerate(subjects):   
 
     # Compute source spaces for subjects and save them in ../Data/src/
     if steps['compute_source_space']:
-        mne_common.compute_source_space(subject, project_dir, src_spacing, overwrite,
-                                        morph = True, add_dist = True)
+        mne_common.compute_source_space(subject, project_dir, src_spacing,
+                                        overwrite, morph = True, add_dist = True)
     
     # Calculate 1-shell and 3-shell BEM solutions using FreeSurfer BEM surfaces
     if steps['calculate_bem_solution']:
@@ -200,7 +206,8 @@ for idx, subject in enumerate(subjects):
     
     # Calculate forward solutions for the subjects and save them in ../Data/fwd/
     if steps['calculate_forward_solution']:
-        bem = os.path.join(subjects_dir, subject, 'bem', subject + bem_suffix + '.fif')
+        bem = os.path.join(subjects_dir, subject, 'bem',
+                           subject + bem_suffix + '.fif')
         raw = rest_raws[idx]
         coreg = coreg_files[idx]
         mne_common.calculate_forward_solution(subject, project_dir, src_spacing,
@@ -222,12 +229,13 @@ if steps['estimate_source_timecourse'] or tenplot == True:
         evokeds.append(mne.read_evokeds(fpath, verbose = False))
     
     # Rearrange to stimulus-based listing instead of subject-based
-    evokeds = [[evokeds_subj[i] for evokeds_subj in evokeds] for i in range(len(evokeds[0]))]
+    evokeds = [[e[i] for e in evokeds] for i in range(len(evokeds[0]))]
     
     # Load forward operators and noise covs
     print("Loading data for inverse solution")
     fwds_ = []
     noise_covs = []
+
     for idx, subject in enumerate(subjects):
         fname_fwd = utils.get_fname(subject, 'fwd', src_spacing = src_spacing)
         fpath_fwd = os.path.join(project_dir, 'Data', 'fwd', fname_fwd)
@@ -265,11 +273,12 @@ if steps['estimate_source_timecourse'] or tenplot == True:
     for stim in stimuli:
         print("Solving for stimulus " + stim)
         stim_idx = int("".join([i for i in stim if i in "1234567890"])) - 1
-        evokeds = [ev.crop(starts[i], stops[i]) for i, ev in enumerate(evokeds[stim_idx])]
+        evokeds = [ev.crop(starts[i], stops[i]) for i, ev
+                   in enumerate(evokeds[stim_idx])]
 
         # Change the Evoked timestamps from subject-specific to 0 to circumvent
-        # a limitation in GroupMNE inverse.py, line 77 if subject-specific timing
-        # is used
+        # a limitation in GroupMNE inverse.py, line 77 if subject-specific
+        # timing is used
         if len(set(starts)) > 1:
             for ev in evokeds:
                 ev.times = np.array([0.])
@@ -277,8 +286,8 @@ if steps['estimate_source_timecourse'] or tenplot == True:
         print(starts, stops)
         print(evokeds)
 
-        info = '-'.join([src_spacing, "subjects=" + str(len(subjects)), task, stim,
-                        "target=" + str(target)])
+        info = '-'.join([src_spacing, "subjects=" + str(len(subjects)), task,
+                         stim, "target=" + str(target)])
 
         if stim in bilaterals:
             target *= 2
@@ -292,8 +301,9 @@ if steps['estimate_source_timecourse'] or tenplot == True:
 
         solvers.group_inversion(subjects, project_dir, src_spacing, stc_method,
                                 task, stim, fwds, evokeds, noise_covs, target,
-                                overwrite, concomitant = concomitant, alpha = alpha,
-                                beta = beta, info = info, suffix = suffix)
+                                overwrite, concomitant = concomitant,
+                                alpha = alpha, beta = beta, info = info,
+                                suffix = suffix)
 
 # Morph subject data to fsaverage
 if steps['morph_to_fsaverage']:
@@ -306,11 +316,11 @@ if steps['morph_to_fsaverage']:
 # Average data from all subjects for selected task and stimuli
 if steps['average_stcs_source_space']:
     print('Averaging stcs in source space')
-    utils.average_stcs_source_space(subjects, project_dir, src_spacing, stc_method,
-                                    task, stimuli, overwrite = overwrite,
-                                    suffix = suffix)
+    utils.average_stcs_source_space(subjects, project_dir, src_spacing,
+                                    stc_method, task, stimuli,
+                                    overwrite = overwrite, suffix = suffix)
 
-# Plot all stimulus peaks on fsaverage LH and RH, color based on 3-ring eccentricity
+# Plot all stimulus peaks on fsaverage, color based on 3-ring eccentricity
 if steps['plot_eccentricity_foci']:
     if solo_subject == None:
         visualize.plot_foci(project_dir, src_spacing, stc_method, task, stimuli,
@@ -320,7 +330,7 @@ if steps['plot_eccentricity_foci']:
                             colors_ecc, bilaterals, suffix, 'ecc', overwrite,
                             subject = solo_subject, stc_type = 'stc_m')
 
-# Plot all stimulus peaks on fsaverage LH and RH, color based on wedge
+# Plot all stimulus peaks on fsaverage, color based on wedge
 if steps['plot_polar_foci']:
     if solo_subject == None:
         visualize.plot_foci(project_dir, src_spacing, stc_method, task, stimuli,

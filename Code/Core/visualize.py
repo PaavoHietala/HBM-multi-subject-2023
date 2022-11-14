@@ -110,8 +110,7 @@ def plot_foci(project_dir, src_spacing, stc_method, task, stimuli, colors,
     brain.show_view({'elevation' : 100, 'azimuth' : -60}, distance = 350, col = 0)
     brain.show_view({'elevation' : 100, 'azimuth' : -120}, distance = 350, col = 1)
     brain.show()
-
-    # Cropping code from https://mne.tools/stable/auto_examples/visualization/publication_figure.html
+    
     ss = brain.screenshot()
     cropped = crop_whitespace(ss)
 
