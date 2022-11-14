@@ -107,9 +107,6 @@ steps = {'prepare_directories' :        False,
          'estimate_source_timecourse' : False,
          'morph_to_fsaverage' :         False,
          'average_stcs_source_space' :  False,
-         'label_peaks' :                False, # Not really useful
-         'expand_peak_labels' :         False, # For intermediate plots only
-         'label_all_vertices' :         False, # Broken
          'plot_eccentricity_foci' :     False,
          'plot_polar_foci' :            False,
          'tabulate_geodesics' :         False} 
@@ -146,7 +143,7 @@ for idx, subject in enumerate(subjects):
     
     # Setup forward model based on FreeSurfer BEM surfaces
     if steps['calculate_bem_solution']:
-        mne_common.calculate_bem_solution(subject, project_dir, overwrite)
+        mne_common.calculate_bem_solution(subject, overwrite)
     
     # Calculate forward solutions for the subjects and save them in ../Data/fwd/
     if steps['calculate_forward_solution']:
@@ -187,22 +184,6 @@ if steps['average_stcs_source_space']:
     utils.average_stcs_source_space(subjects, project_dir, src_spacing, stc_method,
                                     task, stimuli, suffix, timing = timing,
                                     overwrite = overwrite)
-    
-# Select peaks from all averaged stimuli and plot on fsaverage
-if steps['label_peaks']:
-    visualize.label_peaks(subjects, project_dir, src_spacing, stc_method, task,
-                          stimuli, colors, overwrite)
-
-# Select peaks from all averaged stimuli, grow them 7mm and plot on lh + rh
-if steps['expand_peak_labels']:
-    visualize.expand_peak_labels(subjects, project_dir, src_spacing, stc_method,
-                                 task, stimuli, colors, suffix, overwrite,
-                                 bilaterals = bilaterals)
-
-# Label each vertex based on normalized stimulus data and plot on lh + rh
-if steps['label_all_vertices']:
-    visualize.label_all_vertices(subjects, project_dir, src_spacing, stc_method,
-                                 task, stimuli, colors, overwrite)
 
 # Plot all stimulus peaks on fsaverage LH and RH, color based on 3-ring eccentricity
 if steps['plot_eccentricity_foci']:

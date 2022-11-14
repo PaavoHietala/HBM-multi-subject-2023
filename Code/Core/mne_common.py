@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Wrappers for different commonly used functions of the MNE package.
+Wrappers for different commonly used functions of the MNE-python package.
 
 Created on Tue Feb  2 15:31:35 2021
 
@@ -56,7 +56,7 @@ def compute_source_space(subject, project_dir, src_spacing, overwrite = False,
                 mne.add_source_space_distances(src, n_jobs=16)
         src.save(fpath, overwrite = True)
 
-def calculate_bem_solution(subject, project_dir, overwrite):
+def calculate_bem_solution(subject, overwrite):
     '''
     Calculate 1-shell and 3-shell bem solutions from FreeSurfer surfaces and
     save them in <subjects_dir>/<subject>/bem/
@@ -65,8 +65,6 @@ def calculate_bem_solution(subject, project_dir, overwrite):
     ----------
     subject : str
         Subject name/identifier as in filenames.
-    project_dir : str
-        Base directory of the project with Data subfolder.
     overwrite : bool, optional
         Overwrite existing files switch. The default is False.
 
@@ -121,11 +119,12 @@ def calculate_forward_solution(subject, project_dir, src_spacing, bem, raw, core
     
     if overwrite or not os.path.isfile(fpath_fwd):
         fname_src = get_fname(subject, 'src', src_spacing = src_spacing)
-        src = mne.read_source_spaces(os.path.join(project_dir, 'Data', 'src', fname_src))
-        
+        src = mne.read_source_spaces(os.path.join(project_dir, 'Data', 'src',
+                                     fname_src))
         fwd = mne.make_forward_solution(raw, trans = coreg, src = src, bem = bem,
                                         meg = True, eeg = False)
-        mne.write_forward_solution(fpath_fwd, fwd, overwrite=True)
+
+        mne.write_forward_solution(fpath_fwd, fwd, overwrite = True)
 
 def compute_covariance_matrix(subject, project_dir, raw, overwrite = False):
     '''
@@ -194,8 +193,8 @@ def morph_to_fsaverage(subject, project_dir, src_spacing, stc_method,
     stcs = {}
     for stimulus in stimuli:
         fname = get_fname(subject, 'stc', stc_method = stc_method,
-                          src_spacing=src_spacing, task = task, stim = stimulus,
-                          suffix = suffix)
+                          src_spacing = src_spacing, task = task,
+                          stim = stimulus, suffix = suffix)
         fpath = os.path.join(project_dir, 'Data', 'stc', fname)
         stcs[stimulus] = mne.read_source_estimate(fpath)
     
