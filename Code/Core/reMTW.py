@@ -391,15 +391,17 @@ def reMTW_find_beta(fwds, evokeds, noise_covs, stim, project_dir, target,
     print("Got beta_=" + str(beta_))
     return stcs_, beta_
 
-def reMTW_tenplot_a(fwds, evokeds, noise_covs, stim, project_dir,
-                    concomitant = False, beta = 0.3):
+def reMTW_hyper_plot(fwds, evokeds, noise_covs, stim, project_dir,
+                     concomitant = False, param = 'alpha', secondary = 0.3):
     '''
-    Plot the relationship between alpha and average active sources at 11 points.
+    Plot the relationship between alpha and average active sources at 11
+    points. Used to output plots in Figure 2.
 
     Parameters
     ----------
     fwds : list of mne.Forward
-        Forward models for each subject, preprocessed with groupmne.prepare_forwards().
+        Forward models for each subject, preprocessed with
+        groupmne.prepare_forwards().
     evokeds : list of mne.Evoked
         Sensor responses to the stimulus, one per subject.
     noise_covs : list of mne.Covariance
@@ -410,99 +412,47 @@ def reMTW_tenplot_a(fwds, evokeds, noise_covs, stim, project_dir,
         Base directory of the project.
     concomitant : bool, optional
         Whether to use concomitant noise estimation or not, by default False
-    beta : float, optional
-        Beta used in the calculations, by default 0.3
+    param : str, optional
+        Which parameter to plot, either 'alpha' or 'beta', by default 'alpha'.
+    secondary : float, optional
+        Static value for the secondary parameter, if param == 'alpha',
+        secondary means beta and vice versa. By default 0.3
     '''
 
-    log = dict(alphas = [], actives = [])
-    
-    solver_kwargs = dict(beta = beta, alpha = 1)
+    log = dict(params = [], actives = [])
+    secondary_param = 'alpha' if param == 'beta' else 'beta'
+
+    solver_kwargs = {param : (1 if param == 'alpha' else 0.3),
+                     secondary_param : secondary}
     solver_kwargs['epsilon'] = 5. / fwds[0]['sol']['data'].shape[-1]
     solver_kwargs['gamma'] = 1
     solver_kwargs['concomitant'] = concomitant
 
-    alphas = np.linspace(0,10,11)
-    alphas[0] = 1
+    if param == 'alpha':
+        params = np.linspace(1, 25, 13)
+    else:
+        params = np.linspace(0.2, 0.9, 15)
 
-    # Test alpha at 11 points
-    for a in alphas:
-        solver_kwargs['alpha'] = a
+    # Find the number of average sources with each primary hyperparameter value
+    for p in params:
+        solver_kwargs[param] = p
         try:
-            print("Solving for alpha=" + str(solver_kwargs['alpha']))
+            print(f'Solving for {param} = {solver_kwargs[param]}')
             _, avg = reMTW_wrapper(fwds, evokeds, noise_covs, solver_kwargs)
-            print("Got " + str(avg) + " active sources with alpha="
-                  + str(solver_kwargs['alpha']))
+            print(f'Got {avg} active sources with {param} = {solver_kwargs[param]}')
         except ValueError as e:
-            print("Alpha=" + str(solver_kwargs['alpha'])
-                  + " caused an error (skipping):")
+            print(f'{param} = {solver_kwargs[param]} caused an error (skipping):')
             print(e)
-            solver_kwargs['alpha'] += 1
+            solver_kwargs[param] += (1 if param == 'alpha' else 0.05)
             continue
 
-        log['alphas'] += [solver_kwargs['alpha']]
-        log['actives'] += [avg]
+        log['params'].append(solver_kwargs[param])
+        log['actives'].append(avg)
 
-    log['actives'] = [avg for _, avg in sorted(zip(log['alphas'], log['actives']))]
-    log['alphas'].sort()
+    log['actives'] = [avg for _, avg in sorted(zip(log['params'], log['actives']))]
+    log['params'].sort()
 
-    # Print the result, save log in a file and plot active points vs alphas
-    reMTW_param_plot(log, project_dir, 'alphas', stim, suffix = 'tenpoint')
-    reMTW_save_params(project_dir, 'alpha', log['alphas'], log['actives'], 'beta',
-                      solver_kwargs['beta'], stim)
-
-def reMTW_tenplot_b(fwds, evokeds, noise_covs, stim, project_dir,
-                    concomitant = False, alpha = 7.5):
-    '''
-    Plot the relationship between beta and average active sources at 11 points.
-
-    Parameters
-    ----------
-    fwds : list of mne.Forward
-        Forward models for each subject, preprocessed with groupmne.prepare_forwards().
-    evokeds : list of mne.Evoked
-        Sensor responses to the stimulus, one per subject.
-    noise_covs : list of mne.Covariance
-        Noise covariance matrices for each subject.
-    stim : str
-        Stimulus which is analyzed here, e.g. 'sector22'.
-    project_dir : str
-        Base directory of the project.
-    concomitant : bool, optional
-        Whether to use concomitant noise estimation or not, by default False
-    alpha : float, optional
-        Alpha used in the calculations, by default 7.5
-    '''
-
-    log = dict(betas = [], actives = [])
-    
-    solver_kwargs = dict(beta = 0.3, alpha = alpha)
-    solver_kwargs['epsilon'] = 5. / fwds[0]['sol']['data'].shape[-1]
-    solver_kwargs['gamma'] = 1
-    solver_kwargs['concomitant'] = concomitant
-    betas = np.linspace(0.15,0.3,11)
-
-    # Test betas at 11 points
-    for b in betas:
-        solver_kwargs['beta'] = b
-        try:
-            print("Solving for beta=" + str(solver_kwargs['beta']))
-            _, avg = reMTW_wrapper(fwds, evokeds, noise_covs, solver_kwargs)
-            print("Got " + str(avg) + " active sources with beta="
-                  + str(solver_kwargs['beta']))
-        except ValueError as e:
-            print("beta=" + str(solver_kwargs['beta'])
-                  + " caused an error (skipping):")
-            print(e)
-            solver_kwargs['beta'] += 0.05
-            continue
-
-        log['betas'] += [solver_kwargs['beta']]
-        log['actives'] += [avg]
-
-    log['actives'] = [avg for _, avg in sorted(zip(log['betas'], log['actives']))]
-    log['betas'].sort()
-
-    # Print the result, save log in a file and plot active points vs alphas
-    reMTW_param_plot(log, project_dir, 'betas', stim, suffix = 'tenpoint')
-    reMTW_save_params(project_dir, 'beta', log['betas'], log['actives'], 'alpha',
-                      solver_kwargs['alpha'], stim)
+    # Print the result, save log in a file and plot active points vs params
+    reMTW_param_plot(log, project_dir, f'{param}s', stim, suffix = 'hyperplot')
+    reMTW_save_params(project_dir, param, log['params'], log['actives'],
+                      secondary_param, solver_kwargs[secondary_param], stim)

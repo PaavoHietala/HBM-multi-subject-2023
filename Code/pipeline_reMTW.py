@@ -85,8 +85,8 @@ coreg_files = ['/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/' + s +
 
 # List of evoked response files for source activity estimate, list of str
 
-evoked_files = [os.path.join(project_dir, 'Data', 'Evoked') + subject
-                + '_f-ave.fif' for subject in subjects]
+evoked_files = [project_dir + 'Data/Evoked/' + subject + '_f-ave.fif' for
+                subject in subjects]
 
 # List of matplotlib colors for each stimulus area, colors are used in peak
 # foci plots, colors_ecc in eccentricity-based plots and colors_polar in
@@ -149,7 +149,7 @@ steps = {'prepare_directories' :        False,
 
 alpha = None
 beta = None
-tenplot = False
+hyper_plot = False
 start = 0.08
 stop = 0.08
 concomitant = False
@@ -164,8 +164,8 @@ for arg in sys.argv[1:]:
         beta = float(arg[6:])
     elif arg.startswith('-target='):
         target = float(arg[8:])
-    elif arg.startswith('-tenplot'):
-        tenplot = True
+    elif arg.startswith('-hyperplot'):
+        hyper_plot = True
     elif arg.startswith('-time='):
         times = arg[6:].split(',')
         start = float(times[0])
@@ -221,7 +221,7 @@ for idx, subject in enumerate(subjects):
 # Following steps are run on simulaneously for all subjects --------------------
 
 # Estimate source timecourses
-if steps['estimate_source_timecourse'] or tenplot == True:
+if steps['estimate_source_timecourse'] or hyper_plot == True:
     # Prepare list of evoked responses
     print("Loading evokeds")
     evokeds = []
@@ -292,11 +292,13 @@ if steps['estimate_source_timecourse'] or tenplot == True:
         if stim in bilaterals:
             target *= 2
 
-        if tenplot == True:
-            reMTW.reMTW_tenplot_a(fwds, evokeds, noise_covs, stim, project_dir,
-                                  concomitant = concomitant, beta = beta)
-            reMTW.reMTW_tenplot_b(fwds, evokeds, noise_covs, stim, project_dir,
-                                  concomitant = concomitant, alpha = alpha)
+        if hyper_plot == True:
+            reMTW.reMTW_hyper_plot(fwds, evokeds, noise_covs, stim, project_dir,
+                                   concomitant = concomitant, param = 'alpha',
+                                   secondary = 0.3)
+            reMTW.reMTW_hyper_plot(fwds, evokeds, noise_covs, stim, project_dir,
+                                   concomitant = concomitant, param = 'beta',
+                                   secondary = 7.5)
             continue
 
         solvers.group_inversion(subjects, project_dir, src_spacing, stc_method,
