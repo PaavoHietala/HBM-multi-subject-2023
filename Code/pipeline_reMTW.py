@@ -344,10 +344,10 @@ if steps['plot_polar_foci']:
 if steps['tabulate_geodesics']:
     if solo_subject == None:
         utils.tabulate_geodesics(project_dir, src_spacing, stc_method, task,
-                                stimuli, bilaterals, suffix, overwrite,
-                                counts = counts)
+                                stimuli, bilaterals, suffix,
+                                overwrite = overwrite, counts = counts)
     else:
         utils.tabulate_geodesics(project_dir, src_spacing, stc_method, task,
-                                stimuli, bilaterals, suffix, overwrite,
-                                counts = counts, subject = solo_subject,
-                                mode = 'stc_m')
+                                stimuli, bilaterals, suffix,
+                                overwrite = overwrite, counts = counts,
+                                subject = solo_subject, mode = 'stc_m')

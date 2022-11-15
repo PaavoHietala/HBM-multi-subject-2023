@@ -212,4 +212,4 @@ if steps['plot_polar_foci']:
 # Tabulate geodesic distances between peaks and V1 on 1-20 averaged subjects
 if steps['tabulate_geodesics']:
     utils.tabulate_geodesics(project_dir, src_spacing, stc_method, task,
-                             stimuli, bilaterals, suffix, overwrite)
+                             stimuli, bilaterals, suffix, overwrite = overwrite)
