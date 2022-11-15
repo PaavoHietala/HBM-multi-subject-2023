@@ -9,6 +9,7 @@ Created on Tue March 30 15:22:35 2021
 @author: hietalp2
 '''
 import copy
+import os
 
 import mne
 import numpy as np
@@ -21,8 +22,8 @@ def plot_foci(project_dir, src_spacing, stc_method, task, stimuli, colors,
               bilaterals, suffix, mode, subject = 'fsaverage', stc_type = 'avg',
               time = None):
     '''
-    Plot foci bubbles on fsaverage brain. Eccentricity and angle can be controlled
-    with colors parameter
+    Plot foci bubbles on fsaverage brain. Eccentricity and angle can be
+    controlled with colors parameter
 
     Parameters
     ----------
@@ -56,9 +57,9 @@ def plot_foci(project_dir, src_spacing, stc_method, task, stimuli, colors,
     None.
     '''
     
+    plot_subject = subject if stc_type == 'stc' else 'fsaverage'
     title = ' '.join([stc_method, suffix, 'average', mode, subject, stc_type])
-    brain = mne.viz.Brain((subject if stc_type == 'stc' else 'fsaverage'),
-                          'split', 'inflated', title = title,
+    brain = mne.viz.Brain(plot_subject, 'split', 'inflated', title = title,
                           background = (255, 255, 255), size = (1000, 600),
                           show = False)
 
@@ -68,19 +69,18 @@ def plot_foci(project_dir, src_spacing, stc_method, task, stimuli, colors,
     colors_rgb = np.array([to_rgba(c) for c in colors])
 
     peaks, peak_hemis = find_peaks(project_dir, src_spacing, stc_method, task,
-                                   stimuli, bilaterals, suffix, subject = subject,
-                                   mode = stc_type, time = time)
+                                   stimuli, bilaterals, suffix, time = time,
+                                   subject = subject, mode = stc_type)
     
     stimuli = copy.deepcopy(stimuli)
     [stimuli.insert(i, stimuli[i]) for i in bilateral_idx[::-1]]
     
     # Add V1 label and found peaks on the brain & plot
-    for hemi_id, hemi in enumerate(['lh', 'rh']):
+    for hemi in ['lh', 'rh']:
         # Label V1 on the cortex
-        v1 = mne.read_label('/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/'
-                            + (subject if stc_type == 'stc' else 'fsaverage')
-                            + '/label/' + hemi + '.V1_exvivo.label',
-                            (subject if mode == 'stc' else 'fsaverage'))
+        label_path = os.path.join(mne.get_config('SUBJECTS_DIR'), plot_subject,
+                                  'label', f'{hemi}.V1_exvivo.label')
+        v1 = mne.read_label(label_path, plot_subject)
         brain.add_label(v1, borders = 2)
 
         # Prepare lists of colors, peaks, stimulus names and color names for plot
@@ -114,4 +114,4 @@ def plot_foci(project_dir, src_spacing, stc_method, task, stimuli, colors,
     ss = brain.screenshot()
     cropped = crop_whitespace(ss)
 
-    plt.imsave(project_dir + 'Data/plot/' + title + '.png', cropped)
+    plt.imsave(os.path.join(project_dir, 'Data', 'plot', f'{title}.png'), cropped)
