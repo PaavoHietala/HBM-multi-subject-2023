@@ -89,7 +89,7 @@ def reMTW_param_plot(log, project_dir, param, stim, suffix = ''):
     '''
 
     plt.ioff()
-    plt.figure(figsize=(4,2.5))
+    plt.figure(figsize=(4, 2.5))
     plt.plot(log[param], log['actives'], '--bo')
 
     plt.yscale('log')
@@ -419,7 +419,7 @@ def reMTW_hyper_plot(fwds, evokeds, noise_covs, stim, project_dir,
         secondary means beta and vice versa. By default 0.3
     '''
 
-    log = dict(params = [], actives = [])
+    log = {param : [], 'actives' : []}
     secondary_param = 'alpha' if param == 'beta' else 'beta'
 
     solver_kwargs = {param : (1 if param == 'alpha' else 0.3),
@@ -446,13 +446,13 @@ def reMTW_hyper_plot(fwds, evokeds, noise_covs, stim, project_dir,
             solver_kwargs[param] += (1 if param == 'alpha' else 0.05)
             continue
 
-        log['params'].append(solver_kwargs[param])
+        log[param].append(solver_kwargs[param])
         log['actives'].append(avg)
 
-    log['actives'] = [avg for _, avg in sorted(zip(log['params'], log['actives']))]
-    log['params'].sort()
+    log['actives'] = [avg for _, avg in sorted(zip(log[param], log['actives']))]
+    log[param].sort()
 
     # Print the result, save log in a file and plot active points vs params
-    reMTW_param_plot(log, project_dir, f'{param}s', stim, suffix = 'hyperplot')
-    reMTW_save_params(project_dir, param, log['params'], log['actives'],
+    reMTW_param_plot(log, project_dir, param, stim, suffix = 'hyperplot')
+    reMTW_save_params(project_dir, param, log[param], log['actives'],
                       secondary_param, solver_kwargs[secondary_param], stim)
