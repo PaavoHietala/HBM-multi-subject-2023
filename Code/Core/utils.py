@@ -248,7 +248,7 @@ def find_peaks(project_dir, src_spacing, stc_method, task, stimuli, bilaterals,
 
 def tabulate_geodesics(project_dir, src_spacing, stc_method, task, stimuli,
                        bilaterals, suffix, counts = [1, 5, 10, 15, 20],
-                       subject = 'fsaverage', mode = 'avg'):
+                       subject = 'fsaverage', mode = 'avg', overwrite = False):
     '''
     Compute geodesic distances between peaks and the V1 label vertices and
     save them in a csv file. Each row is one subject count in <counts> and
@@ -269,35 +269,44 @@ def tabulate_geodesics(project_dir, src_spacing, stc_method, task, stimuli,
     bilaterals : list of str
         Names of bilateral stimuli
     suffix : str
-        Suffix to append to the end of the output filename.
+        Suffix to append to the end of the output filename. Numbers are
+        stripped from the beginning to allow suffix to be e.g. 10subjects.
     counts : list, optional
         List of subject counts to calculate the distances for,
         by default [1, 5, 10, 15, 20]
     subject : str, optional
-        Subject for which the distances are calculated, by default 'fsaverage'
+        Subject for which the distances are calculated. If the mode is 'avg' or
+        'stc_m', the subject is forced as 'fsaverage', by default 'fsaverage'
     mode : str, optional
         Stc type, either 'stc', 'stc_m' or 'avg', by default 'avg'
+    overwrite : bool, optional
+        Overwrite existing files switch, by default False.
 
     Returns
     -------
     None.
     '''
 
+    print(counts, stimuli, bilaterals)
+    subjects_dir = mne.get_config('SUBJECTS_DIR')
     suffix = suffix.lstrip('0123456789')
     distances = np.zeros((len(counts), len(stimuli) + len(bilaterals)))
+    out_path = os.path.join(project_dir, 'Data', 'plot',
+                            f'distances_{subject}_{mode}.csv')
+
+    if not overwrite and os.path.isfile(out_path):
+        print(f"Output file {out_path} exists and overwrite = False, skipping.")
+        return
 
     # Load V1 labels and source space with distances
-    v1_lh = mne.read_label('/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/'
-                            + (subject if (mode == 'stc') else 'fsaverage')
-                            + '/label/lh.V1_exvivo.label',
-                            (subject if(mode == 'stc') else 'fsaverage'))
-    v1_rh = mne.read_label('/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/'
-                            + (subject if (mode == 'stc') else 'fsaverage')
-                            + '/label/rh.V1_exvivo.label',
-                            (subject if (mode == 'stc') else 'fsaverage'))
-    fname_src = get_fname((subject if (mode == 'stc') else 'fsaverage'), 'src',
-                           src_spacing = src_spacing)
-    src = mne.read_source_spaces(project_dir + 'Data/src/' + fname_src,
+    subject = subject if mode == 'stc' else 'fsaverage'
+    v1_lh = mne.read_label(os.path.join(subjects_dir, subject, 'label', 
+                                        'lh.V1_exvivo.label'), subject)
+    v1_rh = mne.read_label(os.path.join(subjects_dir, subject, 'label', 
+                                        'rh.V1_exvivo.label'), subject)
+
+    fname_src = get_fname(subject, 'src', src_spacing = src_spacing)
+    src = mne.read_source_spaces(os.path.join(project_dir, 'Data', 'src', fname_src),
                                  verbose = False)
 
     # Comparison list to get inf distance if the peak is on the wrong hemi
@@ -310,7 +319,6 @@ def tabulate_geodesics(project_dir, src_spacing, stc_method, task, stimuli,
                                        task, stimuli, bilaterals, suffix,
                                        return_index = False, subject = subject,
                                        mode = mode)
-        print(peaks)
         
         # Count average geodesic distance between peaks and V1 label points
         for peak_idx, peak in enumerate(peaks):
@@ -325,10 +333,6 @@ def tabulate_geodesics(project_dir, src_spacing, stc_method, task, stimuli,
 
                 # Calculate avg distance between peak and label points
                 for vertex in used_verts:
-                    d = src[hemi_idx]['dist'][peak, vertex] * 1000
-                    if d == 0:
-                        print(peak, vertex)
-                        a=1
                     dist += src[hemi_idx]['dist'][peak, vertex] * 1000 # m -> mm
                 dist /= len(used_verts)
             # Wrong hemi
@@ -336,8 +340,7 @@ def tabulate_geodesics(project_dir, src_spacing, stc_method, task, stimuli,
                 dist = np.inf
             distances[n_idx, peak_idx] = dist
     
-    np.savetxt(project_dir + 'Data/plot/distances_' + subject + '_' + mode + '.csv',
-               distances, delimiter = ',', fmt = '%.3f')
+    np.savetxt(out_path, distances, delimiter = ',', fmt = '%.3f')
 
 def crop_whitespace(img, borders_only = False):
     '''
