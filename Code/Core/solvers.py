@@ -82,10 +82,10 @@ def group_inversion(subjects, project_dir, src_spacing, stc_method, task, stim,
         # Find 0.5 * alpha_max, where alpha_max spreads activation everywhere
         if 'alpha' not in solver_kwargs or solver_kwargs['alpha'] == None:
             print('Finding optimal alpha for ' + stim)
-            alpha = reMTW_find_param(fwds, evokeds, noise_covs, stim,
-                                     project_dir, copy.deepcopy(solver_kwargs),
-                                     param = 'alpha', info = info,
-                                     suffix = suffix)
+            _, alpha = reMTW_find_param(fwds, evokeds, noise_covs, stim,
+                                        project_dir, copy.deepcopy(solver_kwargs),
+                                        param = 'alpha', info = info,
+                                        suffix = suffix)
             solver_kwargs['alpha'] = alpha
         
         # Find beta which produces exactly <target> active source points
