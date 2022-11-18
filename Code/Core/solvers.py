@@ -10,7 +10,7 @@ Created on Tue March 30 15:22:35 2021
 
 import os
 import copy
-from .reMTW import reMTW_find_alpha, reMTW_find_beta, reMTW_wrapper
+from .reMTW import reMTW_find_param, reMTW_wrapper
 from .utils import get_fname
 
 def group_inversion(subjects, project_dir, src_spacing, stc_method, task, stim,
@@ -82,17 +82,19 @@ def group_inversion(subjects, project_dir, src_spacing, stc_method, task, stim,
         # Find 0.5 * alpha_max, where alpha_max spreads activation everywhere
         if 'alpha' not in solver_kwargs or solver_kwargs['alpha'] == None:
             print('Finding optimal alpha for ' + stim)
-            alpha = reMTW_find_alpha(fwds, evokeds, noise_covs, stim,
+            alpha = reMTW_find_param(fwds, evokeds, noise_covs, stim,
                                      project_dir, copy.deepcopy(solver_kwargs),
-                                     info = info, suffix = suffix)
+                                     param = 'alpha', info = info,
+                                     suffix = suffix)
             solver_kwargs['alpha'] = alpha
         
         # Find beta which produces exactly <target> active source points
         if 'beta' not in solver_kwargs or solver_kwargs['beta'] == None:
             print('Finding optimal beta for ' + stim)
-            stcs, _ = reMTW_find_beta(fwds, evokeds, noise_covs, stim,
-                                      project_dir, target, solver_kwargs,
-                                      info = info, suffix = suffix)
+            stcs, _ = reMTW_find_param(fwds, evokeds, noise_covs, stim,
+                                       project_dir, solver_kwargs,
+                                       target = target, param = 'beta',
+                                       info = info, suffix = suffix)
         
         # Everything has been set beforehand, just run the inversion
         else:

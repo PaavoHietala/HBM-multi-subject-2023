@@ -372,3 +372,28 @@ def crop_whitespace(img, borders_only = False):
     cropped_img = img[nonwhite_rows][:, nonwhite_cols]
 
     return cropped_img
+
+def multi_sort(primary, secondaries):
+    '''
+    Sort multiple lists based on the primary list's order.
+
+    Parameters
+    ----------
+    primary : list
+        The first list to be sorted based on <primary>.
+    secondaries : list of list
+        Any number of lists to be sorted based on <primary>.
+    
+    Returns
+    -------
+    primary : list
+        The first list ordered based on <primary>.
+    secondaries : list of list
+        All of the secondary lists ordered based on <primary>.
+    '''
+
+    for i in range(len(secondaries)):
+        secondaries[i] = [x for _, x in sorted(zip(primary, secondaries[i]))]
+    primary.sort()
+
+    return primary, secondaries
