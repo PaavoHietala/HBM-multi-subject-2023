@@ -51,7 +51,7 @@ def compute_source_space(subject, project_dir, src_spacing, overwrite = False,
             fpath_ref = os.path.join(project_dir, 'Data', 'src', fname_ref)
             
             src_ref = mne.read_source_spaces(fpath_ref)
-            src = mne.morph_source_spaces(src_ref, subject_to=subject)
+            src = mne.morph_source_spaces(src_ref, subject_to = subject)
             if add_dist:
                 mne.add_source_space_distances(src, n_jobs=16)
         src.save(fpath, overwrite = True)

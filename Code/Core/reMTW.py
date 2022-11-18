@@ -256,7 +256,7 @@ def reMTW_find_param(fwds, evokeds, noise_covs, stim, project_dir,
     -------
     stcs_ : mne.SourceEstimate
         Source estimate associated with the returned parameter value.
-    param : float
+    param_value : float
         Optimal alpha or beta with given function parameters.
     '''
 
@@ -334,15 +334,17 @@ def reMTW_find_param(fwds, evokeds, noise_covs, stim, project_dir,
     
     if param == 'alpha':
         # Find the elbow = the highest gradient as alpha_max
+        # Good heuristic for alpha is 0.5 * aMax
         aMax = find_aMax(log[param], log['actives'])
         stcs_ = log['stcs'][log[param].index(aMax)]
         print(f'Got aMax = {aMax}')
+        param_value = 0.5 * aMax
     else:
         # Select the beta with avg closest to the target
         beta_idx = np.argmin(np.abs(np.array(log['actives']) - target))
-        beta = log[param][beta_idx]
+        param_value = log[param][beta_idx]
         stcs_ = log['stcs'][beta_idx]
-        print(f'Got beta_ = {beta}')
+        print(f'Got beta_ = {param_value}')
 
     # Print the result, save log in a file and plot active points vs alphas
     reMTW_param_plot(log, project_dir, param, stim, suffix = suffix)
@@ -350,11 +352,7 @@ def reMTW_find_param(fwds, evokeds, noise_covs, stim, project_dir,
                       secondary, solver_kwargs[secondary], stim, info = info,
                       suffix = suffix)
 
-    if param == 'alpha':
-        # Good heuristic for alpha is 0.5 * aMax
-        return stcs_, 0.5 * aMax
-    else:
-        return stcs_, beta
+    return stcs_, param_value
 
 def reMTW_hyper_plot(fwds, evokeds, noise_covs, stim, project_dir,
                      concomitant = False, param = 'alpha', secondary = 0.3):
