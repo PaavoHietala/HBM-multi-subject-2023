@@ -307,13 +307,13 @@ def tabulate_geodesics(project_dir, src_spacing, stc_method, task, stimuli,
         return
 
     # Load V1 labels and source space with distances
-    subject = subject if mode == 'stc' else 'fsaverage'
-    v1_lh = mne.read_label(os.path.join(subjects_dir, subject, 'label', 
-                                        'lh.V1_exvivo.label'), subject)
-    v1_rh = mne.read_label(os.path.join(subjects_dir, subject, 'label', 
-                                        'rh.V1_exvivo.label'), subject)
+    lbl_subject = subject if mode == 'stc' else 'fsaverage'
+    v1_lh = mne.read_label(os.path.join(subjects_dir, lbl_subject, 'label', 
+                                        'lh.V1_exvivo.label'), lbl_subject)
+    v1_rh = mne.read_label(os.path.join(subjects_dir, lbl_subject, 'label', 
+                                        'rh.V1_exvivo.label'), lbl_subject)
 
-    fname_src = get_fname(subject, 'src', src_spacing = src_spacing)
+    fname_src = get_fname(lbl_subject, 'src', src_spacing = src_spacing)
     src = mne.read_source_spaces(os.path.join(project_dir, 'Data', 'src', fname_src),
                                  verbose = False)
 
