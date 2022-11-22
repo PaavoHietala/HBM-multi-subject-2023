@@ -15,10 +15,7 @@ import sys
 import numpy as np
 from datetime import datetime
 
-# Dirty hack to get the cross-platform relative import from same dir to work
-sys.path.append(os.path.dirname(os.path.realpath(__file__)))
-from Core import mne_common, solvers, utils, visualize, reMTW
-
+from Core import mne_common, solvers, utils, reMTW
 from groupmne import prepare_fwds
 
 print(datetime.now().strftime("%D.%M.%Y %H:%M:%S"),
@@ -88,19 +85,6 @@ coreg_files = ['/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/' + s +
 evoked_files = [project_dir + 'Data/Evoked/' + subject + '_f-ave.fif' for
                 subject in subjects]
 
-# List of matplotlib colors for each stimulus area, colors are used in peak
-# foci plots, colors_ecc in eccentricity-based plots and colors_polar in
-# polar angle -based plots, list of str
-
-colors = ['mistyrose', 'plum', 'thistle', 'lightsteelblue', 'lightcyan',
-          'lightgreen', 'lightyellow', 'papayawhip', 'lightcoral', 'violet',
-          'mediumorchid', 'royalblue', 'aqua', 'mediumspringgreen', 'khaki',
-          'navajowhite', 'red', 'purple', 'blueviolet', 'blue', 'turquoise',
-          'lime', 'yellow', 'orange']
-colors_ecc = ['blue'] * 8 + ['yellow'] * 8 + ['red'] * 8
-colors_polar = ['cyan', 'indigo', 'violet', 'magenta', 'red', 'orange',
-                'yellow', 'green'] * 3
-
 # Overwrite existing files, bool
 
 overwrite = True
@@ -139,8 +123,6 @@ steps = {'prepare_directories' :        False,
          'estimate_source_timecourse' : False,
          'morph_to_fsaverage' :         False,
          'average_stcs_source_space' :  False,
-         'plot_eccentricity_foci' :     False,
-         'plot_polar_foci' :            False,
          'tabulate_geodesics' :         False}
 
 ### Run the pipeline -----------------------------------------------------------
@@ -321,26 +303,6 @@ if steps['average_stcs_source_space']:
     utils.average_stcs_source_space(subjects, project_dir, src_spacing,
                                     stc_method, task, stimuli,
                                     overwrite = overwrite, suffix = suffix)
-
-# Plot all stimulus peaks on fsaverage, color based on 3-ring eccentricity
-if steps['plot_eccentricity_foci']:
-    if solo_subject == None:
-        visualize.plot_foci(project_dir, src_spacing, stc_method, task, stimuli,
-                            colors_ecc, bilaterals, suffix, 'ecc', overwrite)
-    else:
-        visualize.plot_foci(project_dir, src_spacing, stc_method, task, stimuli,
-                            colors_ecc, bilaterals, suffix, 'ecc', overwrite,
-                            subject = solo_subject, stc_type = 'stc_m')
-
-# Plot all stimulus peaks on fsaverage, color based on wedge
-if steps['plot_polar_foci']:
-    if solo_subject == None:
-        visualize.plot_foci(project_dir, src_spacing, stc_method, task, stimuli,
-                            colors_polar, bilaterals, suffix, 'polar', overwrite)
-    else:
-        visualize.plot_foci(project_dir, src_spacing, stc_method, task, stimuli,
-                            colors_polar, bilaterals, suffix, 'polar', overwrite,
-                            subject = solo_subject, stc_type = 'stc_m')
 
 # Tabulate geodesic distances between peaks and V1 on 1-20 averaged subjects
 if steps['tabulate_geodesics']:

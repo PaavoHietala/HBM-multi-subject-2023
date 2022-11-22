@@ -13,7 +13,7 @@ import mne
 import os
 import numpy as np
 
-from Core import mne_common, mne_inverse, utils, visualize
+from Core import mne_common, mne_inverse, utils
 
 ### Parameters -----------------------------------------------------------------
 
@@ -83,19 +83,6 @@ evoked_files = [project_dir + 'Data/Evoked/' + subject + '_f-ave.fif' for
 
 timing_fpath = project_dir + 'Data/plot/V1_medians_evoked.csv'
 
-# List of matplotlib colors for each stimulus area, colors are used in peak
-# foci plots, colors_ecc in eccentricity-based plots and colors_polar in
-# polar angle -based plots, list of str
-
-colors = ['mistyrose', 'plum', 'thistle', 'lightsteelblue', 'lightcyan',
-          'lightgreen', 'lightyellow', 'papayawhip', 'lightcoral', 'violet',
-          'mediumorchid', 'royalblue', 'aqua', 'mediumspringgreen', 'khaki',
-          'navajowhite', 'red', 'purple', 'blueviolet', 'blue', 'turquoise',
-          'lime', 'yellow', 'orange']
-colors_ecc = ['blue'] * 8 + ['yellow'] * 8 + ['red'] * 8
-colors_polar = ['cyan', 'indigo', 'violet', 'magenta', 'red', 'orange',
-                'yellow', 'green'] * 3
-
 # List of stimuli that should show response on both hemispheres, list of str
 
 bilaterals = ['sector3', 'sector7', 'sector11',
@@ -117,8 +104,6 @@ steps = {'prepare_directories' :        False,
          'estimate_source_timecourse' : False,
          'morph_to_fsaverage' :         False,
          'average_stcs_source_space' :  False,
-         'plot_eccentricity_foci' :     False,
-         'plot_polar_foci' :            False,
          'tabulate_geodesics' :         False} 
 
 
@@ -196,18 +181,6 @@ if steps['average_stcs_source_space']:
     utils.average_stcs_source_space(subjects, project_dir, src_spacing,
                                     stc_method, task, stimuli, suffix,
                                     timing = timing, overwrite = overwrite)
-
-# Plot all stimulus peaks on fsaverage, color based on 3-ring eccentricity
-if steps['plot_eccentricity_foci']:
-    visualize.plot_foci(project_dir, src_spacing, stc_method, task, stimuli,
-                        colors_ecc, bilaterals, suffix, 'ecc', overwrite,
-                        time = (timing[0] if len(subjects) == 1 else None))
-
-# Plot all stimulus peaks on fsaverage, color based on stimulus wedges
-if steps['plot_polar_foci']:
-    visualize.plot_foci(project_dir, src_spacing, stc_method, task, stimuli,
-                        colors_polar, bilaterals, suffix, 'polar', overwrite,
-                        time = (timing[0] if len(subjects) == 1 else None))
 
 # Tabulate geodesic distances between peaks and V1 on 1-20 averaged subjects
 if steps['tabulate_geodesics']:

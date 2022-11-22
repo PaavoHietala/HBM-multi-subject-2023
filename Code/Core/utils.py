@@ -174,16 +174,16 @@ def find_peaks(project_dir, src_spacing, stc_method, task, stimuli, bilaterals,
                suffix, return_index = False, subject = 'fsaverage',
                mode = 'avg', stc = None, time = None):
     '''
-    Find peak indices and hemispheres for averaged stc files
+    Find peak activation vertices and hemispheres from mne.SourceEstimate files.
 
     Parameters
     ----------
     project_dir : str
         Base directory of the project with Data subfolder.
     src_spacing : str
-        Source space scheme used in this file, e.g. 'oct6'.
+        Source space scheme used in this file, e.g. 'oct4'.
     stc_method : str
-        Inversion method used, e.g. 'dSPM'.
+        Inversion method used, e.g. 'eLORETA'.
     task : str
         Task in the estimated stcs, e.g. 'f'.
     stimuli : list of str
@@ -191,17 +191,20 @@ def find_peaks(project_dir, src_spacing, stc_method, task, stimuli, bilaterals,
     bilaterals: list of str
         List of bilateral stimuli (on midline); label peaks on both hemis.
     suffix : str
-        Suffix to append to stc filename before -avg.fif
-    return_index : bool
-        Whether to return peak vertex index instead of vertex ID (default)
-    subject : str
-        Name of the subject the stc is for, defaults to fsaverage
-    mode : str
-        Type of stc, can be either 'stc', 'stc_m' or 'avg'. Defaults to 'avg'
-    stc : mne.SourceEstimate
-        If source estimate is given, skip loading it again.
-    time : float
+        Suffix to append to stc filename before the common suffix
+        (e.g. '-avg.fif')
+    return_index : bool, optional
+        Whether to return peak vertex index instead of vertex ID, by default
+        False.
+    subject : str, optional
+        Name of the subject the stc is for, by default 'fsaverage'.
+    mode : str, optional
+        Type of stc, can be either 'stc', 'stc_m' or 'avg', by default 'avg'
+    stc : mne.SourceEstimate, optional
+        If source estimate is given, skip loading it again, by default None.
+    time : float, optional
         A timepoint for which to get the peak. If None, overall peak is used.
+        By default None.
     
     Returns
     -------
@@ -233,13 +236,19 @@ def find_peaks(project_dir, src_spacing, stc_method, task, stimuli, bilaterals,
                 hemi = 'lh'
             else:
                 hemi = 'rh'
-            print(stc.get_peak(hemi = hemi, vert_as_index = return_index))
-            peaks.append(stc.get_peak(hemi = hemi, vert_as_index = return_index)[0])
+            peak = stc.get_peak(hemi = hemi, vert_as_index = return_index)[0]
+            print(f'Got peak for stimulus {stim} on {hemi} at index {peak}')
+            peaks.append(peak)
             peak_hemis.append(hemi)
         else:
             # Bilateral; get both lh and rh peaks and store them
-            peaks.append(stc.get_peak(hemi = 'lh', vert_as_index = return_index)[0])
-            peaks.append(stc.get_peak(hemi = 'rh', vert_as_index = return_index)[0])
+            peak_lh = stc.get_peak(hemi = 'lh', vert_as_index = return_index)[0]
+            peak_rh = stc.get_peak(hemi = 'rh', vert_as_index = return_index)[0]
+            print(f'Got peak for stimulus {stim} on lh at index {peak_lh} and',
+                  f'on rh at {peak_rh}')
+
+            peaks.append(peak_lh)
+            peaks.append(peak_rh)
             peak_hemis += ['lh', 'rh']
         
         stc = None
