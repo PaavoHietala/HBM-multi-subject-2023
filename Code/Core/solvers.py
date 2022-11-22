@@ -17,7 +17,8 @@ def group_inversion(subjects, project_dir, src_spacing, stc_method, task, stim,
                     fwds, evokeds, noise_covs, target, overwrite, info = '',
                     suffix = None, **solver_kwargs):
     '''
-    Wrapper for the different groupmne solvers.
+    Wrapper for groupMNE multi-subject solvers. Handles parameter search
+    and saving the final source estimates to disk.
 
     Parameters
     ----------
@@ -43,10 +44,11 @@ def group_inversion(subjects, project_dir, src_spacing, stc_method, task, stim,
         Target count of average active source points.
     overwrite : Bool
         Whether or not overwrite existing source estimates.
-    info : str
-        Additional info string to differentiate the log inputs. Default is ''.
-    suffix : str
-        Optional suffix to append to the end of the output filename.
+    info : str, optional
+        Additional info string to append to the beginning of a log file entry.
+        Default is ''.
+    suffix : str, optional
+        Suffix to append to the end of the output filename, by default None.
     solver_kwargs : kwargs
         Additional parameters to be passed on to the underlying solver.
 

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Wrappers for different commonly used functions of the MNE-python package.
+Wrappers for different functions of the MNE-python package which are used
+in both pipelines.
 
 Created on Tue Feb  2 15:31:35 2021
 
@@ -15,7 +16,7 @@ from .utils import get_fname
 def compute_source_space(subject, project_dir, src_spacing, overwrite = False,
                          add_dist = False, morph = False):
     '''
-    Compute source space vertices from freesurfer data and save it in
+    Compute source space vertices from Freesurfer data and save it in
     <project_dir>/Data/src/
 
     Parameters
@@ -23,15 +24,15 @@ def compute_source_space(subject, project_dir, src_spacing, overwrite = False,
     subject : str
         Subject name/identifier as in filenames.
     project_dir : str
-        Base directory of the project with Data subfolder.
+        Base directory of the project with /Data/ subfolder.
     src_spacing : str
         Source space scheme used in this file, e.g. 'oct6'.
     overwrite : bool, optional
-        Overwrite existing files switch. The default is False.
+        Overwrite existing files switch, by default False.
     add_dist: bool | str, optional
-        Add distance information to the source space. The default is False.
+        Add distance information to the source space, by default False.
     morph: bool, optional
-        Create the source space by warping from fsaverage. The default is False.
+        Create the source space by warping from fsaverage, by default False.
 
     Returns
     -------
@@ -44,7 +45,7 @@ def compute_source_space(subject, project_dir, src_spacing, overwrite = False,
     if overwrite or not os.path.isfile(fpath):
         if not morph:
             src = mne.setup_source_space(subject, spacing = src_spacing,
-                                         add_dist=add_dist, n_jobs = 16)
+                                         add_dist = add_dist, n_jobs = 16)
         else:
             # Load fsaverage source space and morph it to subject
             fname_ref = get_fname('fsaverage', 'src', src_spacing = src_spacing)
@@ -53,10 +54,11 @@ def compute_source_space(subject, project_dir, src_spacing, overwrite = False,
             src_ref = mne.read_source_spaces(fpath_ref)
             src = mne.morph_source_spaces(src_ref, subject_to = subject)
             if add_dist:
-                mne.add_source_space_distances(src, n_jobs=16)
+                mne.add_source_space_distances(src, n_jobs = 16)
+
         src.save(fpath, overwrite = True)
 
-def calculate_bem_solution(subject, overwrite):
+def calculate_bem_solution(subject, overwrite = False):
     '''
     Calculate 1-shell and 3-shell bem solutions from FreeSurfer surfaces and
     save them in <subjects_dir>/<subject>/bem/
@@ -66,7 +68,7 @@ def calculate_bem_solution(subject, overwrite):
     subject : str
         Subject name/identifier as in filenames.
     overwrite : bool, optional
-        Overwrite existing files switch. The default is False.
+        Overwrite existing files switch, by default False.
 
     Returns
     -------
@@ -109,7 +111,7 @@ def calculate_forward_solution(subject, project_dir, src_spacing, bem, raw,
     coreg : str
         Full path to the MEG/MRI coregistration file used here.
     overwrite : bool, optional
-        Overwrite existing files switch. The default is False.
+        Overwrite existing files switch, by default False.
 
     Returns
     -------
@@ -142,7 +144,7 @@ def compute_covariance_matrix(subject, project_dir, raw, overwrite = False):
     raw : str
         Full path to the raw recording used here for sensor info.
     overwrite : bool, optional
-        Overwrite existing files switch. The default is False.
+        Overwrite existing files switch, by default False.
 
     Returns
     -------
@@ -157,7 +159,7 @@ def compute_covariance_matrix(subject, project_dir, raw, overwrite = False):
         noise_cov.save(fpath)
         
 def morph_to_fsaverage(subject, project_dir, src_spacing, stc_method,
-                       task, stimuli, overwrite, suffix = None):
+                       task, stimuli, overwrite = False, suffix = None):
     '''
     Morph source estimates of given subjects to fsaverage mesh and save the
     morphed stcs in <project_dir>/Data/stc_m/
@@ -171,15 +173,15 @@ def morph_to_fsaverage(subject, project_dir, src_spacing, stc_method,
     src_spacing : str
         Source space scheme used in this file, e.g. 'oct6'.
     stc_method : str
-        Inversion method used, e.g. 'dSPM'.
+        Inversion method used, e.g. 'eLORETA'.
     task: str
         Task in the estimated stcs, e.g. 'f'.
     stimuli: list of str
         List of stimuli for whcih the stcs are estimated.
     overwrite : bool, optional
-        Overwrite existing files switch. The default is False.
-    suffix : str
-        Suffix to append to the end of the output filename.
+        Overwrite existing files switch, by default False.
+    suffix : str, optional
+        Suffix to append to the end of the output filename, by default None.
 
     Returns
     -------

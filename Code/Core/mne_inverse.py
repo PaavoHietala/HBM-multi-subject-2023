@@ -23,13 +23,13 @@ def construct_inverse_operator(subject, project_dir, raw, src_spacing,
     subject : str
         Subject name/identifier as in filenames.
     project_dir : str
-        Base directory of the project with Data subfolder.
+        Base directory of the project with /Data/ subfolder.
     raw : str
         Full path to the raw recording used here for sensor info.
     src_spacing : str
         Source space scheme used in this file, e.g. 'oct6'.
     overwrite : bool, optional
-        Overwrite existing files switch. The default is False.
+        Overwrite existing files switch, by default False.
 
     Returns
     -------
@@ -50,7 +50,7 @@ def construct_inverse_operator(subject, project_dir, raw, src_spacing,
         
         fname_fwd = get_fname(subject, 'fwd', src_spacing = src_spacing)
         fwd = mne.read_forward_solution(os.path.join(project_dir, 'Data', 'fwd', 
-                                        fname_fwd))
+                                                     fname_fwd))
         
         # Constrain the dipoles to surface normals
         mne.convert_forward_solution(fwd, surf_ori = True, use_cps = True,
@@ -73,23 +73,23 @@ def estimate_source_timecourse(subject, project_dir, raw, src_spacing,
     subject : str
         Subject name/identifier as in filenames.
     project_dir : str
-        Base directory of the project with Data subfolder.
+        Base directory of the project with /Data/ subfolder.
     raw : str
         Full path to the raw recording used here for sensor info.
     src_spacing : str
         Source space scheme used in this file, e.g. 'oct6'.
     stc_method : str
-        Inversion method used, e.g. 'dSPM'.
+        Inversion method used, e.g. 'eLORETA'.
     fname_evokeds : str
         Full path to the file containing the evoked responses.
     task: str
         Task in the estimated stcs, e.g. 'f'.
     stimuli : list of str
         List of stimuli for whcih the stcs are estimated.
-    SNR : float
-        Estimated SNR of the responses. The default is 2.
+    SNR : float, optional
+        Estimated SNR of the responses, by default 2.
     overwrite : bool, optional
-        Overwrite existing files switch. The default is False.
+        Overwrite existing files switch, by default False.
 
     Returns
     -------
@@ -118,7 +118,7 @@ def estimate_source_timecourse(subject, project_dir, raw, src_spacing,
         fpath_stc = os.path.join(project_dir, 'Data', 'stc', fname_stc)
         
         if overwrite or not os.path.isfile(fpath_stc + '-lh.stc'):
-            print("Subject:" + subject + ":stimulus:" + stim)
+            print(f'Subject: {subject} stimulus: {stim}')
             stc = mne.minimum_norm.apply_inverse(evoked, inv, lambda2,
                                                  method = stc_method)    
             stc.save(fpath_stc)

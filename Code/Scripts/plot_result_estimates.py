@@ -12,14 +12,13 @@ Plots are saved to <project_dir>/Data/plot/<filename of stc>.png
 """
 
 import os.path as op
+import sys
 
 import numpy as np
 from PIL import Image
 from io import BytesIO
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import (make_axes_locatable)
-
-import sys
 import mne
 
 sys.path.append(op.dirname(op.dirname(op.realpath(__file__))))

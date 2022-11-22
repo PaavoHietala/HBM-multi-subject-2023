@@ -14,7 +14,7 @@ import numpy as np
 
 def get_fname(subject, ftype, stc_method = None, src_spacing = None,
               fname_raw = None, task = None, stim = None, layers = 1,
-              hemi = 'lh', suffix = None):
+              suffix = None):
     '''
     Create a project-standard filename from given parameters.
     
@@ -25,22 +25,21 @@ def get_fname(subject, ftype, stc_method = None, src_spacing = None,
     ftype : str
         File type for which a fname is generate, e.g. 'src', 'fwd', 'cov'.
     stc_method : str, optional
-        Inversion method used in this file, e.g. 'dSPM'. The default is None.
+        Inversion method used in this file, e.g. 'dSPM', by default None.
     src_spacing : str, optional
-        Source space scheme used in this file, e.g. 'oct6'. The default is None.
+        Source space scheme used in this file, e.g. 'oct6', by default None.
     fname_raw : str, optional
         File name of raw recording from which the info is extracted.
-        The default is None.
+        By default None.
     task : str, optional
-        Task in the evoked response, e.g. 'f'. The default is None.
+        Task in the evoked response, e.g. 'f', by default None.
     stim: str, optional
-        Stimulus name, e.g. 'sector1'. The default is None.
+        Stimulus name, e.g. 'sector1', by default None.
     layers: str, optional
-        How many layers the BEM model has. The default is 1.
-    hemi: str, optional
-        Which hemisphere the name is for, e.g. 'lh'. The default is 'lh'.
+        How many layers the BEM model has, by default 1.
     suffix : str, optional
         A string to append to the end of the filename before file extension.
+        By default None.
 
     Raises
     ------
@@ -116,18 +115,18 @@ def average_stcs_source_space(subjects, project_dir, src_spacing, stc_method,
     src_spacing : str
         Source space scheme used in this file, e.g. 'oct6'.
     stc_method : str
-        Inversion method used, e.g. 'dSPM'.
+        Inversion method used, e.g. 'eLORETA'.
     task: str
         Task in the estimated stcs, e.g. 'f'.
     stimuli: list of str
         List of stimuli for whcih the stcs are estimated.
-    suffix : str
+    suffix : str, optional
         Suffix to append to the end of the output filename before -ave.fif.
     timing : None or list, optional
         List of single timepoints per subject to which the estimate is confined
-        to, default is False (average all timepoints)
+        to, by default False (average each timepoint)
     overwrite : bool, optional
-        Overwrite existing files switch. The default is False.
+        Overwrite existing files switch, by default False.
 
     Returns
     -------
@@ -191,8 +190,8 @@ def find_peaks(project_dir, src_spacing, stc_method, task, stimuli, bilaterals,
     bilaterals: list of str
         List of bilateral stimuli (on midline); label peaks on both hemis.
     suffix : str
-        Suffix to append to stc filename before the common suffix
-        (e.g. '-avg.fif')
+        Suffix to append to stc filename before the common suffix and extension
+        (e.g. '-avg.fif').
     return_index : bool, optional
         Whether to return peak vertex index instead of vertex ID, by default
         False.
@@ -359,8 +358,9 @@ def crop_whitespace(img, borders_only = False):
     ----------
     img : numpy.ndarray
         Image to crop, e.g. a screenshot of the brain or colorbar
-    borders_only : bool
-        Retain whitespace inside the image, e.g. between colorbar and units
+    borders_only : bool, optional
+        Retain whitespace inside the image, e.g. between colorbar and units,
+        by default False.
     
     Returns
     -------
@@ -372,7 +372,8 @@ def crop_whitespace(img, borders_only = False):
     nonwhite_rows = nonwhite_pix.any(1)
     nonwhite_cols = nonwhite_pix.any(0)
 
-    # Set white rows and cols nonwhite if they are inside nonwhite pixels
+    # Set white rows and cols nonwhite if they are inside rows or cols
+    # of nonwhite pixels
     if borders_only:
         for axis in [nonwhite_rows, nonwhite_cols]:
             axis_ids = np.where(axis == True)[0]
