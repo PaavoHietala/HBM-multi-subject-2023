@@ -90,8 +90,8 @@ def prepare_directories(project_dir):
     None.
     '''
 
-    subdirs = ['fwd', 'src', 'inv', 'stc', 'stc_m', 'avg', 'labels', 'cov',
-               'plot', 'slurm_out']
+    subdirs = ['fwd', 'src', 'inv', 'stc', 'stc_m', 'avg', 'cov', 'plot',
+               'slurm_out']
     for dirname in ['Data'] + [os.path.join('Data', dir) for dir in subdirs]:
         try:
             os.makedirs(project_dir + dirname)
