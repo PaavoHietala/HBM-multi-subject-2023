@@ -21,6 +21,8 @@ from Core import mne_common as mne_op
 stc_dir = '/scratch/nbe/megci/MFinverse/Classic/Data/stc/'
 evoked_dir = '/scratch/nbe/megci/MFinverse/Classic/Data/Evoked/'
 output_dir = '/m/nbe/scratch/megci/MFinverse/Classic/Data/plot/'
+subjects_dir = '/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/'
+
 src_spacing = 'ico4'
 stc_method = 'eLORETA'
 task = 'f'
@@ -71,20 +73,22 @@ def stc_timing(stc_dir, src_spacing, stc_method, task, subjects, stimuli):
         print("Extracting timings for " + subject)
 
         # Prepare V1 and V2 labels for lh and rh
-        v1_lh = mne.read_label('/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/'
-                                + subject + '/label/lh.V1_exvivo.label', subject)
-        v1_rh = mne.read_label('/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/'
-                                + subject + '/label/rh.V1_exvivo.label', subject)
-        v2_lh = mne.read_label('/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/'
-                                + subject + '/label/lh.V2_exvivo.label', subject)
-        v2_rh = mne.read_label('/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/'
-                                + subject + '/label/rh.V2_exvivo.label', subject)
+        v1_lh = mne.read_label(os.path.join(subjects_dir, subject, 'label',
+                                            'lh.V1_exvivo.label'), subject)
+        v1_rh = mne.read_label(os.path.join(subjects_dir, subject, 'label',
+                                            'rh.V1_exvivo.label'), subject)
+        v2_lh = mne.read_label(os.path.join(subjects_dir, subject, 'label',
+                                            'lh.V2_exvivo.label'), subject)
+        v2_rh = mne.read_label(os.path.join(subjects_dir, subject, 'label',
+                                            'rh.V2_exvivo.label'), subject)
         
         for stim_idx, stim in enumerate(stimuli):
-            # Load stc and crop it to temporal range of expected max V1 and V2 contribution
-            fname = stc_dir + mne_op.get_fname(subject, 'stc', stc_method = stc_method,
-                                                src_spacing = src_spacing, task = task,
-                                                stim = stim)
+            # Load stc and crop it to temporal range of expected max V1 and
+            # V2 contribution
+            fname = os.path.join(stc_dir, mne_op.get_fname(subject, 'stc',
+                                               task = task, stim = stim,
+                                               stc_method = stc_method,
+                                               src_spacing = src_spacing))
             stc = mne.read_source_estimate(fname)
             stc_V1 = stc.copy().crop(tmin = 0.06, tmax = 0.10)
             stc_V2 = stc.copy().crop(tmin = 0.10, tmax = 0.15)
@@ -140,7 +144,7 @@ def evoked_timing(evoked_dir, task, subjects, stimuli):
     for sub_idx, subject in enumerate(subjects):
         print("Extracting timings for " + subject)
 
-        fname = evoked_dir + subject + '_' + task + '-ave.fif'
+        fname = os.path.join(evoked_dir, f'{subject}_{task}-ave.fif')
         evokeds = mne.read_evokeds(fname, verbose = False)
 
         for evoked_idx, evoked in enumerate(evokeds):
@@ -187,15 +191,18 @@ def medians(times, start = None, stop = None):
 
 if __name__ == "__main__":
     if mode == 'stc':
-        V1, V2 = stc_timing(stc_dir, src_spacing, stc_method, task, subjects, stimuli)
+        V1, V2 = stc_timing(stc_dir, src_spacing, stc_method, task, subjects,
+                            stimuli)
     elif mode == 'evoked':
         V1, V2 = evoked_timing(evoked_dir, task, subjects, stimuli)
 
     # Output V1 and V2 arrays to csv files
-    np.savetxt(output_dir + 'V1_timing_' + mode + '.csv', V1, delimiter = ',', fmt = '%.3f')
-    np.savetxt(output_dir + 'V2_timing_' + mode + '.csv', V2, delimiter = ',', fmt = '%.3f')
+    np.savetxt(os.path.join(output_dir, f'V1_timing_{mode}.csv'), V1,
+               delimiter = ',', fmt = '%.3f')
+    np.savetxt(os.path.join(output_dir, f'V2_timing_{mode}.csv'), V2,
+               delimiter = ',', fmt = '%.3f')
 
     # Calculate subject-specific medians and save them in separate file
     V1_medians = medians(V1, start = 0.060, stop = 0.100)
-    np.savetxt(output_dir + 'V1_medians_' + mode + '.csv', V1_medians,
+    np.savetxt(os.path.join(output_dir, f'V1_medians_{mode}.csv'), V1_medians,
                delimiter = ',', fmt = '%.3f')

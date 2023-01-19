@@ -96,7 +96,7 @@ bilaterals = ['sector3', 'sector7', 'sector11',
 
 # How many average active source points are we aiming for, int
 
-target = 2
+target = 6
 
 # Suffix to append to filenames, used to distinguish averages of N subjects
 # Expected format is len(subjects)<optional text>, str
