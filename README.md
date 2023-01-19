@@ -75,7 +75,8 @@ Three files are required per subject. The input file naming is not strict, as ea
     ```
     1. Run a single job with toggles from prepare_directories to compute_covariance_matrix enabled.
     2. Run an array of jobs with toggles estimate_source_timecourse, morph_to_fsaverage and average_stcs_source_space enabled.
-    3. Run a single job for tabluate_geodesics.
+    3. Repeat step 2 for each number of subjects, e.g. 1, 5, 10, 15 and 20.
+    4. Run a single job for tabulate_geodesics.
     ```
 
 ### reMTW command line options

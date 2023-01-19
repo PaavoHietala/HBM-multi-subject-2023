@@ -4,7 +4,7 @@
 #SBATCH --error=/m/nbe/scratch/megci/MFinverse/reMTW/Data/slurm_out/20subj_%A_%a_error.out
 #SBATCH --open-mode=append
 #SBATCH --array=0-23                        # Array numbers are used to select stimuli
-#SBATCH --time=04:00:00                     # Takes 3-3.5 h on Tesla V100 GPU
+#SBATCH --time=01:30:00                     # Takes 1-1.5 h on Tesla V100 GPU
 #SBATCH --mem=16G                           # RAM, 16G is more than enough
 #SBATCH -c 8                                # Number of CPU cores, GPU is the bottleneck
 #SBATCH --gres=gpu:1                        # Request GPU node to save 10x time
@@ -29,5 +29,4 @@ STIM=${stimuli[SLURM_ARRAY_TASK_ID]}
 # happens. You can find a complete list of CLI paramters in README.md.
 # For a fresh run remove the -alpha parameter.
 srun xvfb-run python -u /m/nbe/scratch/megci/MFinverse/Code/pipeline_reMTW.py \
-    -stim=$STIM -target=2 -dir=/m/nbe/scratch/megci/MFinverse/reMTW/ \
-    -alpha=$ALPHA
+    -stim=$STIM -target=6

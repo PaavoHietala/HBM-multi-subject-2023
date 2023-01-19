@@ -188,7 +188,12 @@ def reMTW_search_step(current, log, history, param):
             if param == 'alpha':
                 return current * 0.2
             if param == 'beta':
-                return current - 0.1
+                # With small beta values the avg active sources rises again
+                # and the computation time skyrockets
+                if current >= 0.2:
+                    return current - 0.1
+                else:
+                    return current * 1.5
     elif history[1] != history[2]:
         # Moved over optimum -> search the midpoint of these points
         return (log[-1] + log[-2]) / 2
@@ -282,7 +287,7 @@ def reMTW_find_param(fwds, evokeds, noise_covs, stim, project_dir,
     history = []
     avg = 0
     iter = 1
-    max_iter = 20
+    max_iter = 15
 
     while True:
         if param == 'beta':
@@ -294,6 +299,7 @@ def reMTW_find_param(fwds, evokeds, noise_covs, stim, project_dir,
             # Adjust beta if a value is recomputed
             if solver_kwargs['beta'] in log['beta']:
                 solver_kwargs['beta'] -= 0.1 * solver_kwargs['beta']
+                iter += 1
                 continue
         else:
             # A good enough alpha_max can be found with 7 iterations.

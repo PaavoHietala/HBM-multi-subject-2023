@@ -26,7 +26,7 @@ print(datetime.now().strftime("%D.%M.%Y %H:%M:%S"),
 # Root data directory of the project. Use a different folder for each
 # pipeline, e.g. .../MFinverse/Classic/ and .../MFinverse/reMTW/
 
-project_dir = '/m/nbe/scratch/megci/MFinverse/reMTW/'
+project_dir = '/m/nbe/scratch/megci/MFinverse/reMTW-6target/'
 
 # Subjects' MRI location (=FreeSurfer file location), str
 
@@ -43,7 +43,7 @@ subjects = [f'MEGCI_S{id}' for id in list(range(1, 25)) if id not in exclude]
 # e.g. 'MEGCI_S1'. None produces averaged results ("MWE with source-space
 # averaging").
 
-solo_subject = None
+solo_subject = 'MEGCI_S1'
 
 # Source point spacing for source space calculation, str
 
@@ -82,7 +82,7 @@ coreg_files = ['/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/' + s +
 
 # List of evoked response files for source activity estimate, list of str
 
-evoked_files = [project_dir + 'Data/Evoked/' + subject + '_f-ave.fif' for
+evoked_files = [project_dir[:-9] + '/Data/Evoked/' + subject + '_f-ave.fif' for
                 subject in subjects]
 
 # Overwrite existing files, bool
@@ -123,7 +123,7 @@ steps = {'prepare_directories' :        False,
          'estimate_source_timecourse' : False,
          'morph_to_fsaverage' :         False,
          'average_stcs_source_space' :  False,
-         'tabulate_geodesics' :         False}
+         'tabulate_geodesics' :         True}
 
 ### Run the pipeline -----------------------------------------------------------
 
@@ -308,10 +308,10 @@ if steps['average_stcs_source_space']:
 if steps['tabulate_geodesics']:
     if solo_subject == None:
         utils.tabulate_geodesics(project_dir, src_spacing, stc_method, task,
-                                stimuli, bilaterals, suffix,
-                                overwrite = overwrite, counts = counts)
+                                 stimuli, bilaterals, suffix,
+                                 overwrite = overwrite, counts = counts)
     else:
         utils.tabulate_geodesics(project_dir, src_spacing, stc_method, task,
-                                stimuli, bilaterals, suffix,
-                                overwrite = overwrite, counts = counts,
-                                subject = solo_subject, mode = 'stc_m')
+                                 stimuli, bilaterals, suffix,
+                                 overwrite = overwrite, counts = counts,
+                                 subject = solo_subject, mode = 'stc_m')
