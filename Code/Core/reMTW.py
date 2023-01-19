@@ -299,7 +299,6 @@ def reMTW_find_param(fwds, evokeds, noise_covs, stim, project_dir,
             # Adjust beta if a value is recomputed
             if solver_kwargs['beta'] in log['beta']:
                 solver_kwargs['beta'] -= 0.1 * solver_kwargs['beta']
-                iter += 1
                 continue
         else:
             # A good enough alpha_max can be found with 7 iterations.

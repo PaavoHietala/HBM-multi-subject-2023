@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=mfinverse
-#SBATCH --output=/m/nbe/scratch/megci/MFinverse/Classic-validation/Data/slurm_out/%A_%a.out
-#SBATCH --error=/m/nbe/scratch/megci/MFinverse/Classic-validation/Data/slurm_out/%A_%a_error.out
+#SBATCH --output=/m/nbe/scratch/megci/MFinverse/Classic/Data/slurm_out/%A_%a.out
+#SBATCH --error=/m/nbe/scratch/megci/MFinverse/Classic/Data/slurm_out/%A_%a_error.out
 #SBATCH --open-mode=append
 #SBATCH --array=0
 #SBATCH --time=04:00:00
