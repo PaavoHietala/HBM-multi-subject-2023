@@ -82,7 +82,7 @@ coreg_files = ['/m/nbe/scratch/megci/data/FS_Subjects_MEGCI/' + s +
 
 # List of evoked response files for source activity estimate, list of str
 
-evoked_files = [project_dir + 'Data/Evoked/' + subject + '_f-ave.fif' for
+evoked_files = [project_dir + '/Data/Evoked/' + subject + '_f-ave.fif' for
                 subject in subjects]
 
 # Overwrite existing files, bool
@@ -308,10 +308,10 @@ if steps['average_stcs_source_space']:
 if steps['tabulate_geodesics']:
     if solo_subject == None:
         utils.tabulate_geodesics(project_dir, src_spacing, stc_method, task,
-                                stimuli, bilaterals, suffix,
-                                overwrite = overwrite, counts = counts)
+                                 stimuli, bilaterals, suffix,
+                                 overwrite = overwrite, counts = counts)
     else:
         utils.tabulate_geodesics(project_dir, src_spacing, stc_method, task,
-                                stimuli, bilaterals, suffix,
-                                overwrite = overwrite, counts = counts,
-                                subject = solo_subject, mode = 'stc_m')
+                                 stimuli, bilaterals, suffix,
+                                 overwrite = overwrite, counts = counts,
+                                 subject = solo_subject, mode = 'stc_m')

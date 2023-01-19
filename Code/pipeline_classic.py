@@ -92,6 +92,10 @@ bilaterals = ['sector3', 'sector7', 'sector11',
 
 overwrite = True
 
+# Number of subjects to compute the averages for, list of str
+
+s_nums = [1, 5, 10, 15, 20]
+
 ### Pipeline steps to run ------------------------------------------------------
 
 
@@ -167,7 +171,7 @@ for idx, subject in enumerate(subjects):
         mne_inverse.estimate_source_timecourse(subject, project_dir, raw,
                                                src_spacing, stc_method,
                                                fname_evokeds, task, stimuli,
-                                               overwrite)
+                                               SNR = 2, overwrite = overwrite)
     
     # Morph subject data to fsaverage
     if steps['morph_to_fsaverage']:
@@ -178,9 +182,12 @@ for idx, subject in enumerate(subjects):
 
 # Average data from all subjects for selected task and stimuli
 if steps['average_stcs_source_space']:
-    utils.average_stcs_source_space(subjects, project_dir, src_spacing,
-                                    stc_method, task, stimuli, suffix,
-                                    timing = timing, overwrite = overwrite)
+    for num in s_nums:
+        subjects_ = subjects[:num]
+        suffix_ = f'{num}{suffix.lstrip("0123456789")}' 
+        utils.average_stcs_source_space(subjects_, project_dir, src_spacing,
+                                        stc_method, task, stimuli, suffix_,
+                                        timing = timing, overwrite = overwrite)
 
 # Tabulate geodesic distances between peaks and V1 on 1-20 averaged subjects
 if steps['tabulate_geodesics']:
