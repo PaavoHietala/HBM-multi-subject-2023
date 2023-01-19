@@ -123,7 +123,7 @@ steps = {'prepare_directories' :        False,
          'estimate_source_timecourse' : False,
          'morph_to_fsaverage' :         False,
          'average_stcs_source_space' :  False,
-         'tabulate_geodesics' :         True}
+         'tabulate_geodesics' :         False}
 
 ### Run the pipeline -----------------------------------------------------------
 
