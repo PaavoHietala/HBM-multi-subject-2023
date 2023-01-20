@@ -33,7 +33,7 @@ Currently supported MEG processing pipelines:
     
     You can also "install" the package without permissions by dropping the root directory of the GroupMNE repository (`groupmne`) to the `Code` directory of this repository.
 
-* In order to use the reMTW pipeline, you need to fix the bug in GroupMNE 0.0.1dev as per the instructions in [this GitHub issue](https://github.com/hichamjanati/groupmne/issues/24) (pull request pending). In a nutshell, the culprit is on line 124 of `groupmne\groupmne\group_model.py` preventing an elementwise addition to offset data on the 2nd hemisphere:
+* In order to use the reMTW pipeline, you need to fix a bug with disk-loaded source estimates in GroupMNE 0.0.1dev. In a nutshell, the culprit is on line 124 of `groupmne\groupmne\group_model.py` preventing an elementwise addition to offset data on the 2nd hemisphere:
     ```python
     col_0 = i * n_sources[0]
     ```

@@ -153,7 +153,7 @@ def plot_result_estimates(subject, stim, method, project_dir, suffix = None,
             stc.rh_data[0] = 1e-20
         
     # Plot the STC with V1 borders:
-    brain = stc.plot(hemi='split', size=(1500,600),
+    brain = stc.plot(hemi = 'split', size = (1500,600),
                      subject = (src_to if stc_type == 'stc_m' else subject),
                      initial_time = (time if stc.data.shape[1] > 1 else None),
                      background = 'w', colorbar = False,
@@ -176,7 +176,7 @@ def plot_result_estimates(subject, stim, method, project_dir, suffix = None,
         maxi = clim['lims'][2]
     else:
         if stc.data.shape[1] > 1:
-            maxi = abs(stc.data[:, 129]).max()
+            maxi = abs(stc.data[:, (-50 + int(time * 1000))]).max()
         else:
             maxi = abs(stc.data).max()
     
@@ -231,35 +231,30 @@ def plot_result_estimates(subject, stim, method, project_dir, suffix = None,
     # Redefine the color bar ticks, if in scientific format add the exponent
     # to the label
     print(clim, cbar_type, maxi)
-    try:
-        base, exponent = str(maxi).split('e')
-        base = str(round(float(base), 2))
+
+    if maxi < 0.2:
+        base, exponent = f'{maxi:.2E}'.split('E')
+        base = float(base)
         cbar = mne.viz.plot_brain_colorbar(cax, clim,
                                            orientation = 'horizontal',
-                                           label = r'Activation (Am) '
-                                           + r'$\cdot 10^{'
-                                           + exponent + r'}$')
+                                           label = fr'Activation (Am) $\cdot '
+                                           + fr'10^{{{exponent}}}$')
         if cbar_type in ['bi', 'bisep']:
             cbar.set_ticks([-maxi, 0, maxi])
-            cbar.set_ticklabels(["%.2f" % -float(base), "%.2f" % 0.00,
-                                 "%.2f" % float(base)])
+            cbar.set_ticklabels([f'{-base:.2F}', '0.00', f'{base:.2F}'])
         else:
             cbar.set_ticks([0, maxi / 2, maxi])
-            cbar.set_ticklabels(["%.2f" % 0.00, "%.2f" % (float(base) / 2),
-                                 "%.2f" % float(base)])
-            
-    # Split fails = not exponential. Use plain floats as ticks instead
-    except ValueError:
-        print('Splitting exponent failed')
+            cbar.set_ticklabels(['0.00', f'{base / 2:.2F}', f'{base:.2F}'])
+    else:
         cbar = mne.viz.plot_brain_colorbar(cax, clim,
                                            orientation = 'horizontal',
                                            label = 'Activation (Am)')
         if cbar_type in ['bi', 'bisep']:
             cbar.set_ticks([round(-maxi, 2), 0, round(maxi, 2)]) 
-            cbar.set_ticklabels(["%.2f" % -maxi, "%.2f" % 0.00, "%.2f" % maxi])
+            cbar.set_ticklabels([f'{-maxi:.2F}', '0.00', f'{maxi:.2F}'])
         else:    
             cbar.set_ticks([0, round(maxi / 2, 2), round(maxi, 2)]) 
-            cbar.set_ticklabels(["%.2f" % 0.00, "%.2f" % (maxi / 2), "%.2f" % maxi])
+            cbar.set_ticklabels(['0.00', f'{maxi / 2:.2F}', f'{maxi:.2F}'])
     
     cbar.outline.set_visible(True)
 
