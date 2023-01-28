@@ -42,7 +42,7 @@ statf = basedir + 'reMTW/Data/plot/geodesics_stats_all.txt'
 
 # Plot titles
 
-titles = ['eLORETA & AVG', 'MWE single subject', 'MWE & AVG']
+titles = ['eLORETA & AVG', 'Subject-specific MWE', 'MWE & AVG']
 
 # Row titles, usually numbers of averaged subjects for each row 
 
